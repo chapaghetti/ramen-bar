@@ -73,6 +73,14 @@ Item {
   property bool requestedTransparent: false
   property bool useTransparentForeground: false
   property bool transparent: false
+  // Double-left-clicking empty bar space flips the pill glyph/font color
+  // between the current dark and a light (or light and dark) counterpart.
+  // Some wallpapers coax omarchy-bar-text-color into a black font that the
+  // user would rather have white; this is the manual override. The choice
+  // follows the effective glyph color, so it flips consistently on any
+  // theme. Widgets that hardcode colors (indicators, battery, the
+  // accent-tinted menu glyph) are unaffected, as is pill chrome.
+  property bool invertedForeground: false
   property bool centerSectionHovered: false
   // One bar surface exists per monitor and each reports into this count, so a
   // pointer crossing from one monitor's bar to another's stays counted however
@@ -94,8 +102,12 @@ Item {
   property color themeForeground: Color.bar.text
   property color themeContrastForeground: Color.background
   property color transparentForeground: Color.bar.text
-  property color foreground: themeForeground
-  property color barForeground: useTransparentForeground ? transparentForeground : themeForeground
+  // The glyph color the bar would use if the toggle were off.
+  readonly property color baseGlyphColor: root.useTransparentForeground ? root.transparentForeground : root.themeForeground
+  readonly property bool baseGlyphIsDark: colorLuma(root.baseGlyphColor) < 0.45
+  readonly property color flippedForeground: root.baseGlyphIsDark ? "#ffffff" : "#000000"
+  property color foreground: root.invertedForeground ? root.flippedForeground : root.themeForeground
+  property color barForeground: root.invertedForeground ? root.flippedForeground : root.baseGlyphColor
   property bool foregroundAnimationEnabled: true
   property color background: Color.bar.background
   property color urgent: Color.bar.active
@@ -704,6 +716,7 @@ Item {
 
     position = normalizePosition(config.position)
     setRequestedTransparency(config.transparent === true)
+    root.invertedForeground = config.foregroundInverted === true
     centerAnchor = Util.canonicalWidgetId(config.centerAnchor || "")
 
     // layoutEntries feeds plain JS arrays to the module Repeaters, and QML
@@ -1081,6 +1094,21 @@ Item {
     if (!command) return
 
     Util.execDetached(command)
+  }
+
+  // Rec.709 luma of a QML color, 0 (black) to 1 (white).
+  function colorLuma(color) {
+    return 0.2126 * color.r + 0.7152 * color.g + 0.0722 * color.b
+  }
+
+  function toggleForegroundInversion() {
+    var nextInverted = !(root.invertedForeground === true)
+    if (root.shell && typeof root.shell.mutateShellConfig === "function") {
+      root.shell.mutateShellConfig(function(config) {
+        if (!Util.isPlainObject(config.bar)) config.bar = {}
+        config.bar.foregroundInverted = nextInverted
+      })
+    }
   }
 
   function rawLayoutSection(config, region) {
@@ -1927,6 +1955,17 @@ Item {
     onClicked: function(mouse) {
       if (suppressClick) {
         suppressClick = false
+        mouse.accepted = true
+      }
+    }
+
+    onDoubleClicked: function(mouse) {
+      if (suppressClick) {
+        suppressClick = false
+        return
+      }
+      if (mouse.button === Qt.LeftButton) {
+        root.toggleForegroundInversion()
         mouse.accepted = true
       }
     }
