@@ -62,6 +62,22 @@ Item {
   // Populated by loadBundledWidgets as the components reach Ready. Reassigning
   // the object (new identity) re-evaluates every slot's registryComponent.
   property var bundledWidgetsById: ({})
+  // Last-resort completion: if a bundled family stalls in Loading and never
+  // settles, publish whatever did load so stock widgets are not left on the
+  // bar for the rest of the session.
+  property var bundledLoadFallback: null
+  Timer {
+    id: bundledFallbackTimer
+    interval: 3000
+    repeat: false
+    onTriggered: {
+      if (bundledLoadFallback && Object.keys(root.bundledWidgetsById).length === 0) {
+        console.warn("[ramen.bar] forcing bundled widget set after load timeout")
+        root.bundledWidgetsById = bundledLoadFallback
+      }
+      root.bundledLoadFallback = null
+    }
+  }
   property var fallbackBarConfig: ({
     position: "top",
     transparent: false,
@@ -1066,7 +1082,12 @@ Item {
         }
       })(family, comp))
     }
-    if (pending === 0) root.bundledWidgetsById = next
+    if (pending === 0) {
+      root.bundledWidgetsById = next
+    } else {
+      root.bundledLoadFallback = next
+      bundledFallbackTimer.restart()
+    }
   }
 
   // Registry-entry resolution for the module slots. Known widget families
@@ -2087,6 +2108,12 @@ Item {
     readonly property var registryComponent: {
       var w = root.barWidgetRegistry.widgets
       if (customType) return null
+      // Read the map directly (not only through the helper below) so this
+      // binding pins on its identity. The map is reassigned the moment every
+      // bundled family finishes loading; a slot that first resolved to the
+      // stock fallback must re-resolve to the bundled component, or the stock
+      // widget stays on screen for the rest of the bar's life.
+      var bundledMap = root.bundledWidgetsById
       var registryName = root.canonicalWidgetId(moduleName)
       var bundled = root.bundledWidgetComponentFor(registryName)
       if (bundled) return bundled
