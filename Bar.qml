@@ -100,7 +100,7 @@ Item {
   property color themeContrastForeground: Color.background
   property color transparentForeground: Color.bar.text
   property color foreground: root.invertedForeground ? root.themeContrastForeground : root.themeForeground
-  property color barForeground: useTransparentForeground ? transparentForeground : themeForeground
+  property color barForeground: root.invertedForeground || !root.useTransparentForeground ? root.foreground : root.transparentForeground
   property bool foregroundAnimationEnabled: true
   property color background: Color.bar.background
   property color urgent: Color.bar.active
