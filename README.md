@@ -12,7 +12,7 @@ Install with:
 
 ```bash
 omarchy plugin add https://github.com/chapaghetti/ramen-bar.git --enable
-omarchy restart shell #for good measure
+omarchy restart shell
 ```
 
 Remove with:
