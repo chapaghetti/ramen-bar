@@ -1,0 +1,68 @@
+{
+  "bar": {
+    "centerAnchor": "omarchy.clock",
+    "id": "ramen.bar",
+    "position": "top",
+    "transparent": true,
+    "gap": 5,
+    "layout": {
+      "left": [
+        { "id": "omarchy.menu" },
+        {
+          "id": "disk",
+          "type": "command",
+          "exec": "~/.config/omarchy/plugins/ramen.bar/scripts/disk-usage",
+          "interval": 5,
+          "tooltip": "Disk usage on /",
+          "onClick": "omarchy-launch-or-focus-tui gdu /"
+        },
+        {
+          "id": "mem",
+          "type": "command",
+          "exec": "~/.config/omarchy/plugins/ramen.bar/scripts/mem-usage",
+          "interval": 5,
+          "tooltip": "Memory utilization",
+          "onClick": "omarchy-launch-or-focus-tui btop"
+        },
+        {
+          "id": "cpu",
+          "type": "command",
+          "exec": "~/.config/omarchy/plugins/ramen.bar/scripts/cpu-usage",
+          "interval": 5,
+          "tooltip": "CPU utilization",
+          "onClick": "omarchy-launch-or-focus-tui btop"
+        }
+      ],
+      "center": [
+        { "id": "omarchy.keyboard-layout" },
+        { "id": "omarchy.weather" },
+        { "id": "omarchy.system-update" },
+        { "id": "omarchy.workspaces" },
+        { "id": "omarchy.indicators" }
+      ],
+      "right": [
+        { "id": "omarchy.agents" },
+        { "id": "omarchy.tray" },
+        { "id": "omarchy.bluetooth" },
+        { "id": "omarchy.network" },
+        { "id": "omarchy.audio" },
+        { "id": "omarchy.monitor" },
+        { "id": "omarchy.power" },
+        {
+          "id": "omarchy.clock",
+          "format": "ddd d MMM h:mm AP",
+          "formatAlt": "d MMMM 'W'ww yyyy",
+          "verticalFormat": "HH\n—\nmm"
+        }
+      ]
+    }
+  },
+  "idle": {
+    "lock": 300,
+    "screensaver": 150
+  },
+  "plugins": [],
+  "version": 1,
+  "disabledPlugins": [],
+  "cloneSourceRestores": []
+}

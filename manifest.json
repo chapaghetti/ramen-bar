@@ -1,0 +1,14 @@
+{
+  "schemaVersion": 1,
+  "id": "ramen.bar",
+  "name": "Ramen Bar",
+  "version": "1.0.0",
+  "author": "chapaghetti",
+  "description": "clean pillbox-style omarchy bar",
+  "kinds": [
+    "bar"
+  ],
+  "entryPoints": {
+    "bar": "Bar.qml"
+  }
+}

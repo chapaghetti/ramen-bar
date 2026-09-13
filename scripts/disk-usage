@@ -1,0 +1,3 @@
+#!/usr/bin/env bash
+used=$(df -P / | awk 'NR==2 {print $5}')
+printf '\U000F02CA %s\n' "$used"
