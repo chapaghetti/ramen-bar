@@ -47,7 +47,7 @@ the same suffix:
 
 | Family | Ramen variant |
 |--------|---------------|
-| `menu` | glyph tinted with the theme accent color |
+| `menu` | omarchy glyph tinted with the theme accent color |
 | `workspaces` | Chinese numerals 一…九 instead of 1…9 |
 | `tray` | drawer that reveals **inward** (away from the bar edge) |
 | `indicators` | red-accented indicator theme |
