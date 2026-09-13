@@ -8,10 +8,8 @@ Every widget floats in its own rounded pill,
 and the bar ships with disk, memory, and CPU utilization readouts built in.
 
 <img width="1920" height="36" alt="screenshot-2026-09-13_17-17-20" src="https://github.com/user-attachments/assets/16f54d83-52f9-4204-a6c6-284e85925a37" />
-
 <img width="1920" height="36" alt="image" src="https://github.com/user-attachments/assets/de8a6924-a04c-42d7-aff7-d48528037c0c" />
-
-<img width="1920" height="36" alt="image" src="https://github.com/user-attachments/assets/2cf1253c-b326-4115-b69e-4c7cd45b8efc" />
+<img width="1920" height="36" alt="image" src="https://github.com/user-attachments/assets/2cf1253c-b326-4115-b69e-4c7cd45b8efc" /><br>
 
 Install with:
 
