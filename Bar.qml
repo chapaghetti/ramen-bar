@@ -62,22 +62,32 @@ Item {
   // Populated by loadBundledWidgets as the components reach Ready. Reassigning
   // the object (new identity) re-evaluates every slot's registryComponent.
   property var bundledWidgetsById: ({})
+  // Bundled families are loaded through Qt.createComponent, which hands the
+  // result to the JS engine. Quickshell's GC can collect those wrappers the
+  // moment a bar rebuild (a position flip) destroys the slots that referenced
+  // them, leaving a component whose every property reads "undefined" while the
+  // stock widget falls through. Every family therefore also gets a persistent
+  // inactive Loader on the root, whose sourceComponent pins the C++ side alive
+  // for the whole life of the bar.
+  Item { id: bundledKeeper; visible: false }
+  function keepBundledComponent(comp, label) {
+    var loader = Qt.createQmlObject("import QtQuick; Loader { active: false }", bundledKeeper, "bundledKeepAlive_" + label)
+    loader.sourceComponent = comp
+  }
   // Last-resort completion: if a bundled family stalls in Loading and never
   // settles, publish whatever did load so stock widgets are not left on the
   // bar for the rest of the session.
   property var bundledLoadFallback: null
-  Timer {
-    id: bundledFallbackTimer
-    interval: 3000
-    repeat: false
-    onTriggered: {
-      if (bundledLoadFallback && Object.keys(root.bundledWidgetsById).length === 0) {
-        console.warn("[ramen.bar] forcing bundled widget set after load timeout")
-        root.bundledWidgetsById = bundledLoadFallback
+Timer {
+      id: bundledFallbackTimer
+      interval: 3000
+      repeat: false
+      onTriggered: {
+        if (bundledLoadFallback && Object.keys(root.bundledWidgetsById).length === 0)
+          root.bundledWidgetsById = bundledLoadFallback
+        root.bundledLoadFallback = null
       }
-      root.bundledLoadFallback = null
     }
-  }
   property var fallbackBarConfig: ({
     position: "top",
     transparent: false,
@@ -1054,6 +1064,7 @@ Item {
 
     function stage(family, comp) {
       next["omarchy." + family.key] = comp
+      root.keepBundledComponent(comp, family.key)
       pending--
       if (pending === 0) root.bundledWidgetsById = next
     }
@@ -1068,6 +1079,7 @@ Item {
       }
       if (comp.status === Component.Ready) {
         next["omarchy." + family.key] = comp
+        root.keepBundledComponent(comp, family.key)
         continue
       }
       pending++
@@ -2115,9 +2127,7 @@ Item {
       // widget stays on screen for the rest of the bar's life.
       var bundledMap = root.bundledWidgetsById
       var registryName = root.canonicalWidgetId(moduleName)
-      var bundled = root.bundledWidgetComponentFor(registryName)
-      if (bundled) return bundled
-      return w[registryName] ? w[registryName].component : null
+      return root.bundledWidgetComponentFor(registryName) || (w[registryName] ? w[registryName].component : null)
     }
     readonly property bool qmlCustom: customType === "qml"
     readonly property bool commandCustom: customType === "command"
