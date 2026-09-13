@@ -71,11 +71,6 @@ Item {
   property var layoutConfig: fallbackBarConfig.layout
   property string centerAnchor: ""
   property bool requestedTransparent: false
-  // Double-clicking empty bar space flips between the theme's foreground and
-  // its contrast (dark <-> light) color, rather than the stock bar's
-  // transparency toggle. Widgets with hardcoded colors (indicators, battery,
-  // the accent-tinted menu glyph) are unaffected.
-  property bool invertedForeground: false
   property bool useTransparentForeground: false
   property bool transparent: false
   property bool centerSectionHovered: false
@@ -99,8 +94,8 @@ Item {
   property color themeForeground: Color.bar.text
   property color themeContrastForeground: Color.background
   property color transparentForeground: Color.bar.text
-  property color foreground: root.invertedForeground ? root.themeContrastForeground : root.themeForeground
-  property color barForeground: root.invertedForeground || !root.useTransparentForeground ? root.foreground : root.transparentForeground
+  property color foreground: themeForeground
+  property color barForeground: useTransparentForeground ? transparentForeground : themeForeground
   property bool foregroundAnimationEnabled: true
   property color background: Color.bar.background
   property color urgent: Color.bar.active
@@ -709,7 +704,6 @@ Item {
 
     position = normalizePosition(config.position)
     setRequestedTransparency(config.transparent === true)
-    root.invertedForeground = config.foregroundInverted === true
     centerAnchor = Util.canonicalWidgetId(config.centerAnchor || "")
 
     // layoutEntries feeds plain JS arrays to the module Repeaters, and QML
@@ -1087,16 +1081,6 @@ Item {
     if (!command) return
 
     Util.execDetached(command)
-  }
-
-  function toggleForegroundInversion() {
-    var nextInverted = !(root.invertedForeground === true)
-    if (root.shell && typeof root.shell.mutateShellConfig === "function") {
-      root.shell.mutateShellConfig(function(config) {
-        if (!Util.isPlainObject(config.bar)) config.bar = {}
-        config.bar.foregroundInverted = nextInverted
-      })
-    }
   }
 
   function rawLayoutSection(config, region) {
@@ -1943,17 +1927,6 @@ Item {
     onClicked: function(mouse) {
       if (suppressClick) {
         suppressClick = false
-        mouse.accepted = true
-      }
-    }
-
-    onDoubleClicked: function(mouse) {
-      if (suppressClick) {
-        suppressClick = false
-        return
-      }
-      if (mouse.button === Qt.LeftButton) {
-        root.toggleForegroundInversion()
         mouse.accepted = true
       }
     }
