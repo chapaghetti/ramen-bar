@@ -7,7 +7,7 @@ and the bar ships with disk, memory, and CPU utilization readouts built in.
 Install with:
 
 ```bash
-omarchy plugin add https://github.com/<you>/<repo>.git --enable
+omarchy plugin add https://github.com/chapaghetti/ramen-bar.git --enable
 ```
 
 `kind: "bar"` means enabling it makes it the active bar; the layout comes
