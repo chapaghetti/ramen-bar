@@ -4,6 +4,8 @@ A clean, pillbox-style status bar for Omarchy, forked from the stock
 `omarchy.bar` layout engine. Every widget floats in its own rounded pill,
 and the bar ships with disk, memory, and CPU utilization readouts built in.
 
+<img width="1920" height="36" alt="screenshot-2026-09-13_17-17-20" src="https://github.com/user-attachments/assets/16f54d83-52f9-4204-a6c6-284e85925a37" />
+
 Install with:
 
 ```bash
