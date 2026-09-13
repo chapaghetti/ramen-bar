@@ -14,6 +14,12 @@ Install with:
 omarchy plugin add https://github.com/chapaghetti/ramen-bar.git --enable
 ```
 
+Remove with:
+
+```bash
+omarchy plugin remove ramen-bar
+```
+
 `kind: "bar"` means enabling it makes it the active bar; the layout comes
 from your `~/.config/omarchy/shell.json` as usual.
 
