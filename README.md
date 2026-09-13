@@ -8,6 +8,8 @@ and the bar ships with disk, memory, and CPU utilization readouts built in.
 
 <img width="1920" height="36" alt="image" src="https://github.com/user-attachments/assets/de8a6924-a04c-42d7-aff7-d48528037c0c" />
 
+<img width="1920" height="36" alt="image" src="https://github.com/user-attachments/assets/2cf1253c-b326-4115-b69e-4c7cd45b8efc" />
+
 Install with:
 
 ```bash
