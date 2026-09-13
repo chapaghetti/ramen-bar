@@ -19,6 +19,7 @@ Remove with:
 
 ```bash
 omarchy plugin remove ramen.bar
+omarchy refresh shell
 ```
 
 `kind: "bar"` means enabling it makes it the active bar; the layout comes
