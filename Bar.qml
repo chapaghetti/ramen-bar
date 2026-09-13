@@ -796,9 +796,20 @@ Item {
       || BarModel.entryIndex(Array.isArray(layout.left) ? layout.left : [], "omarchy.menu") < 0
   }
 
+  // Adoption is a one-way migration. From the first write onward the
+  // persisted layout IS Ramen's canonical one, so re-adopting would clobber
+  // deliberate edits — a drag to another edge, a gap tweak — on every config
+  // change. Recognise the layout we already wrote and leave the rest alone.
+  function isRamenLayout() {
+    var config = Util.isPlainObject(barConfig) ? barConfig : fallbackBarConfig
+    return Util.isPlainObject(config.layout)
+      && root.objectsEqual(config.layout, ramenBarLayout.layout)
+  }
+
   function adoptRamenLayout() {
     if (!root.shell || typeof root.shell.mutateShellConfig !== "function") return
     if (root.hasCustomLayout()) return
+    if (root.isRamenLayout()) return
     root.shell.mutateShellConfig(function(config) {
       if (!Util.isPlainObject(config.bar)) config.bar = {}
       config.bar.position = ramenBarLayout.position
@@ -812,6 +823,40 @@ Item {
   onBarConfigChanged: {
     applyBarConfig()
     root.adoptRamenLayout()
+  }
+
+  // One-directional deep equality: every value defined in `b` (the canonical
+  // Ramen layout) must match in `a` (the persisted one); keys the host added
+  // that Ramen does not define are tolerated.
+  function objectsEqual(a, b) {
+    if (a === b) return true
+    if (typeof a !== "object" || typeof b !== "object" || a === null || b === null) return false
+    if (Array.isArray(a) !== Array.isArray(b)) return false
+    if (Array.isArray(a)) {
+      if (a.length !== b.length) return false
+      for (var i = 0; i < a.length; i++)
+        if (!root.objectsEqual(a[i], b[i])) return false
+      return true
+    }
+    var keys = Object.keys(b)
+    for (var j = 0; j < keys.length; j++) {
+      var key = keys[j]
+      if (!Object.prototype.hasOwnProperty.call(a, key)
+          || !root.objectsEqual(a[key], b[key])) return false
+    }
+    return true
+  }
+
+  // Widgets may pin their own module identity — command modules mark the
+  // fields read-only rather than let the host rewrite them. Follow the pin
+  // when it is writable, and leave a read-only pin alone: it is already what
+  // the host would inject.
+  function injectModuleProperty(target, key, value) {
+    if (!target || !(key in target)) return
+    try {
+      target[key] = value
+    } catch (ignored) {
+    }
   }
 
   function layoutEntries(region) {
@@ -2290,11 +2335,11 @@ Item {
 
     function injectProps() {
       var target = activeItem
-      if (!target) return
+      if (!root || !target) return
       if ("bar" in target) target.bar = firstParty
         ? root : root.pluginBarApiFor(pluginApiId, moduleName, registered)
-      if ("moduleName" in target) target.moduleName = moduleName
-      if ("settings" in target) target.settings = moduleSettings
+      root.injectModuleProperty(target, "moduleName", moduleName)
+      root.injectModuleProperty(target, "settings", moduleSettings)
     }
 
     Component {
