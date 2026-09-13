@@ -1,5 +1,7 @@
 # Ramen Bar
 
+Plugin tested and confirmed working on Omarchy 4.0.3-1 
+
 A clean, pillbox-style status bar for Omarchy, forked from the stock
 `omarchy.bar` layout engine. Every widget floats in its own rounded pill,
 and the bar ships with disk, memory, and CPU utilization readouts built in.
