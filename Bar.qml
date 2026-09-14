@@ -2644,6 +2644,67 @@ function clusterSweepIndex() {
       outputActive = klass === "active" || (Array.isArray(klass) && klass.indexOf("active") !== -1)
     }
 
+    property string iconGlyph: ""
+    property string valueText: ""
+    // A narrow vertical pill can't hold a glyph and a double-digit number on
+    // one line, so stack them: glyph on top, value underneath. Only when the
+    // output actually is two tokens ("<glyph> 85%") and the bar is pinned
+    // left/right; top/bottom bars keep the flat single-line label.
+    readonly property bool stacked: root.vertical && customRoot.iconGlyph !== "" && customRoot.valueText !== ""
+    readonly property real stackedHeight: Math.ceil(iconLabel.implicitHeight + valueLabel.implicitHeight + Style.space(1) + customRoot.scaledVerticalPadding * 2)
+
+    fixedHeight: customRoot.stacked ? customRoot.stackedHeight : -1
+    labelVisible: !customRoot.stacked
+
+    function splitOutput() {
+      var t = String(outputText).trim()
+      iconGlyph = ""
+      valueText = outputText
+      if (!root.vertical || t === "") return
+      var i = t.search(/\s/)
+      if (i <= 0 || i === t.length - 1) return
+      iconGlyph = t.slice(0, i)
+      valueText = t.slice(i + 1).trim()
+    }
+
+    onOutputTextChanged: customRoot.splitOutput()
+
+    Column {
+      visible: customRoot.stacked
+      anchors.centerIn: parent
+      spacing: Style.space(1)
+
+      Text {
+        id: iconLabel
+        text: customRoot.iconGlyph
+        color: customRoot.active && customRoot.useActiveColor ? customRoot.activeColor : customRoot.foreground
+        font.family: customRoot.fontFamily
+        font.pixelSize: customRoot.fontSize
+        horizontalAlignment: Text.AlignHCenter
+        anchors.horizontalCenter: parent.horizontalCenter
+
+        Behavior on color {
+          enabled: !customRoot.bar || customRoot.bar.foregroundAnimationEnabled
+          ColorAnimation { duration: 160 }
+        }
+      }
+
+      Text {
+        id: valueLabel
+        text: customRoot.valueText
+        color: customRoot.active && customRoot.useActiveColor ? customRoot.activeColor : customRoot.foreground
+        font.family: customRoot.fontFamily
+        font.pixelSize: customRoot.fontSize
+        horizontalAlignment: Text.AlignHCenter
+        anchors.horizontalCenter: parent.horizontalCenter
+
+        Behavior on color {
+          enabled: !customRoot.bar || customRoot.bar.foregroundAnimationEnabled
+          ColorAnimation { duration: 160 }
+        }
+      }
+    }
+
     bar: root
     text: outputText || String(setting("text", ""))
     tooltipText: outputTooltip || String(setting("tooltip", ""))

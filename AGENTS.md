@@ -199,6 +199,11 @@ Entry keys: `exec` (path), `interval` (sec), `tooltip`, `onClick`,
 Output may be plain text or Waybar JSON `{"text":..,"tooltip":..,"class":"active"}`.
 Runs every `interval` via `exec`. Click handlers are bashed with the widget's
 `text` available. Reference usage: `scripts/cpu-usage` + README example.
+**Vertical (left/right) bars:** `CustomCommandModule` splits a two-token output
+(`"<glyph> 85%"`) into a stacked, center-aligned column — glyph on top, value
+underneath — so narrow vertical pills don't smoosh the single-line label.
+Top/bottom bars keep the flat label. Confirmed with the disk/mem/cpu util
+pills; animation/opacity/idle rules are unchanged by the split.
 
 ### 4b. QML module (`type: "qml"`)
 Flow: entry `{ "id", "type": "qml", ... }` → file at
