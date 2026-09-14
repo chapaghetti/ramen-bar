@@ -640,6 +640,16 @@ Timer {
     barMoveScreen = window ? window.screen : null
     barMoveCandidate = position
     barMoveActive = true
+    barMoveCursorProc.running = true
+  }
+
+  // Hyprland's cursorpos reports in global logical pixels across the whole
+  // virtual desktop; nearestScreenEdge wants a point relative to the screen
+  // the bar sits on, so subtract the monitor origin.
+  function monitorPointForGlobal(gx, gy) {
+    var scr = barMoveScreen
+    if (!scr) return { x: gx, y: gy }
+    return { x: gx - scr.x, y: gy - scr.y }
   }
 
   function updateBarMove(screenPoint) {
@@ -652,9 +662,20 @@ Timer {
     barMoveCandidate = ""
     barMoveWindow = null
     barMoveScreen = null
+    barMoveArmTimer.stop()
+    barMoveCursorProc.running = false
   }
 
   function finishBarMove() {
+    // On a windowless workspace the cursor stream can be starved for the whole
+    // grab, leaving the candidate pointing at the current edge even though the
+    // cursor actually rests on another one at release. Arm a short window so
+    // the last cursor sample — taken once the grab is over and reads flow again
+    // — can correct the call before we commit.
+    if (barMoveActive) barMoveArmTimer.start()
+  }
+
+  function completeBarMove() {
     var edge = barMoveCandidate
     if (!barMoveActive || !edge || edge === position) {
       clearBarMove()
@@ -663,6 +684,56 @@ Timer {
 
     clearBarMove()
     setBarPosition(edge)
+  }
+
+  // Edge-docking reads the pointer through the bar surface's own mouse events
+  // (CenterGestureArea.onPositionChanged), which Hyprland stops delivering the
+  // moment the cursor leaves the bar onto the desktop — the gesture goes blind
+  // on a windowless workspace and the candidate freezes on the current edge.
+  // Poll the compositor for the global cursor while the move is active so the
+  // drag keeps tracking regardless of what shares the monitor underneath.
+  Timer {
+    id: barMoveCursorTimer
+    interval: 100
+    repeat: true
+    running: true
+    onTriggered: {
+      if (!root.barMoveActive || root.barMoveCursorProc.running) return
+      root.barMoveCursorProc.running = true
+    }
+  }
+
+  Timer {
+    id: barMoveArmTimer
+    interval: 400
+    repeat: false
+    running: false
+    onTriggered: root.completeBarMove()
+  }
+
+  Process {
+    id: barMoveCursorProc
+    running: false
+    // A single long-lived reader beats per-sample spawns: relaunching the
+    // process for every cursor read adds enough latency that a drag outruns
+    // it, so one bash loop streams cursorpos lines until the move ends.
+    command: ["bash", "-c", "while true; do echo \"$(hyprctl cursorpos)\"; sleep 0.03; done"]
+    // Watchdog in case the loop ever dies mid-drag.
+    onExited: function(code, status) {
+      if (!root.barMoveActive) return
+      root.barMoveCursorProc.running = true
+    }
+    stdout: SplitParser {
+      onRead: function(line) {
+        var text = String(line || "").trim()
+        var comma = text.indexOf(",")
+        if (comma < 0) return
+        var gx = Number(text.slice(0, comma).trim())
+        var gy = Number(text.slice(comma + 1).trim())
+        if (isNaN(gx) || isNaN(gy)) return
+        root.updateBarMove(root.monitorPointForGlobal(gx, gy))
+      }
+    }
   }
 
   function setBarPosition(value) {
