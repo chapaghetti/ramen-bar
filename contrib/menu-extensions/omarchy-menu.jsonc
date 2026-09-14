@@ -1,0 +1,10 @@
+{
+  // User extensions and overrides on the built-in omarchy menu.
+  // Merged over /usr/share/omarchy/default/omarchy/omarchy-menu.jsonc.
+  "install.flatpak": {
+    "icon": "󰏓",
+    "label": "Flatpak",
+    "when": "command -v flatpak",
+    "action": "xdg-terminal-exec --app-id=org.omarchy.terminal omarchy-pkg-flatpak-install"
+  }
+}

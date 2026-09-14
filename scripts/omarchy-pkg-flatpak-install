@@ -1,0 +1,28 @@
+#!/bin/bash
+
+# omarchy:summary=Show a fuzzy-finder TUI for picking Flatpaks to install.
+# omarchy:requires-sudo=false
+
+remote="${FLATPAK_INSTALL_REMOTE:-flathub}"
+
+fzf_args=(
+  --multi
+  --preview 'flatpak remote-info '$remote' {1} 2>/dev/null'
+  --preview-label='alt-p: toggle description, alt-j/k: scroll, tab: multi-select'
+  --preview-label-pos='bottom'
+  --preview-window 'down:65%:wrap'
+  --bind 'alt-p:toggle-preview'
+  --bind 'alt-d:preview-half-page-down,alt-u:preview-half-page-up'
+  --bind 'alt-k:preview-up,alt-j:preview-down'
+  --color 'pointer:green,marker:green'
+)
+
+picks=$(flatpak remote-ls --columns=application,name,description "$remote" 2>/dev/null | sort -fu | fzf "${fzf_args[@]}")
+
+if [[ -n $picks ]]; then
+  apps=$(printf '%s\n' "$picks" | awk -F '\t' '{print $1}')
+  if [[ -n $apps ]]; then
+    printf '%s\n' "$apps" | xargs -r flatpak install --assumeyes --noninteractive "$remote"
+    omarchy-show-done
+  fi
+fi

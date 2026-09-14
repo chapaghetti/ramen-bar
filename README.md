@@ -99,6 +99,25 @@ font that covers those codepoints.
 
 To drop the widgets, delete the `ensureSystemStats` injection in `Bar.qml`.
 
+## Package install menu (Flatpak / AUR / repo)
+
+Opt-in feature under `contrib/` that adds a bar button opening a popup with
+three install TUIs:
+
+- `contrib/bar-modules/pkg-install.qml` → copy to
+  `~/.config/omarchy/bar/modules/pkg-install.qml`, then add
+  `{ "id": "pkg-install", "type": "qml" }` to `bar.layout.left`.
+- `contrib/menu-extensions/omarchy-menu.jsonc` → copy to
+  `~/.config/omarchy/extensions/omarchy-menu.jsonc` (adds *Flatpak* to the
+  Install submenu).
+- `scripts/omarchy-pkg-flatpak-install` → copy to `~/.local/bin/` (the
+  Flatpak install TUI; `FLATPAK_INSTALL_REMOTE` overrides the default
+  `flathub` remote).
+
+Rows are gated on what's actually installed (`command -v`), so the Flatpak
+option disappears on machines without flatpak and everything still works.
+See `AGENTS.md` §6 for details.
+
 ## Customizing
 
 The bar config lives under the `bar:` key of [`~/.config/omarchy/shell.json`](../../README.md#shelljson-shape). Out of the box the shell uses [`config/omarchy/shell.json`](../../../config/omarchy/shell.json). Once you customize anything via the bar gestures, `omarchy bar ...`, or by editing shell.json directly, your file is canonical — there is no deep-merge.
