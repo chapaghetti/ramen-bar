@@ -816,7 +816,9 @@ Timer {
       var region = r === 0 ? "left" : (r === 1 ? "center" : "right")
       var rows = Array.isArray(layout[region]) ? layout[region] : []
       for (var i = 0; i < rows.length; i++)
-        if (BarModel.moduleString(rows[i], "exec", "") !== "") commandCount++
+        if (BarModel.moduleString(rows[i], "exec", "") !== ""
+            || String(root.entrySettings(rows[i]).type || "") === "command")
+          commandCount++
     }
     return commandCount > 0
       || BarModel.entryIndex(Array.isArray(layout.left) ? layout.left : [], "omarchy.menu") < 0
