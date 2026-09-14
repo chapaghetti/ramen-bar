@@ -11,6 +11,49 @@ and the bar ships with disk, memory, and CPU utilization readouts built in.
 <img width="1920" height="36" alt="image" src="https://github.com/user-attachments/assets/de8a6924-a04c-42d7-aff7-d48528037c0c" />
 <img width="1920" height="36" alt="image" src="https://github.com/user-attachments/assets/2cf1253c-b326-4115-b69e-4c7cd45b8efc" />
 
+## Signature features
+
+Ramen started as the stock `omarchy.bar` with a pillbox makeover, but a handful
+of behaviors are genuinely unique to this bar.
+
+**Drag-and-drop reordering, rendered-space aware.** Grab any pill and drop it
+before or after any neighbor; an accent drop-marker tracks the live slot as
+you drag. Drops resolve against what the bar is actually *rendering*, not just
+what's persisted in `shell.json` — so you can park a widget directly to the
+right of the auto-injected CPU/disk/mem readouts that never existed in your
+config. The first drag of an injected pill pins the whole arrangement to the
+config file; from then on it moves like any other widget.
+
+**A light/dark "print" toggle.** Double-left-click empty bar space to flip the
+pill surfaces between the translucent theme pill ("light" look) and a stark
+black surface ("dark" look). Text and icons stay on the light side in both
+modes, so glyph contrast never breaks no matter which wallpaper you're on. The
+change rolls across the bar as a coordinated wave — left → right away, right →
+left on the way back — because every pill runs its own wave offset from its
+position in the row.
+
+**Edge docking with a preview.** Press-and-hold on empty bar space and glide
+toward an edge: the strongest candidate (a diagonal screen split decides)
+lights up as a ghost slab, and releasing docks the bar there. Hiding the bar
+parks it just past the edge instead of destroying the surface, so revealing it
+again costs ~20 ms, not a full teardown.
+
+**Bundled widgets that follow the widget, not its vendor.** Workspaces
+(Chinese numerals 一…九), an inward-opening tray drawer, red-accented
+indicators, warm battery colors, and the accent-tinted menu glyph ship inside
+this plugin and trigger on the dot-suffix of whatever widget id a layout
+mentions — stock ids, clones, or anything else.
+
+**Live system stats, injected first.** `disk`, `mem`, and `cpu` always appear
+in the left section on a 5-second cadence and open `gdu`/`btop` when clicked.
+When the bar is pinned to a screen edge, they reflow into a stacked,
+center-aligned icon-above-percentage column instead of a squeezed single line.
+
+**Package install, on tap.** An injected button opens Arch-repo, AUR, and
+Flatpak install TUIs straight from the bar — every row gated on what's
+actually installed, so the Flatpak option quietly disappears where flatpak
+isn't.
+
 Install with:
 
 ```bash
@@ -103,6 +146,11 @@ layout, they win (so you can move them or change their settings).
 The scripts emit `\U000F02CA` / `\U0000EFC5` / `\uf2db` icon glyphs via a
 font that covers those codepoints.
 
+Because each readout pairs an icon glyph with a double-digit percentage, they
+reflow on vertical (left/right-pinned) bars: the glyph stacks above the number,
+both center-aligned, instead of squeezing into a cramped single line. Top and
+bottom bars keep the flat `<glyph> <NN>%` label.
+
 To drop the widgets, delete the `ensureSystemStats` injection in `Bar.qml`.
 
 ## Package install menu (Flatpak / AUR / repo)
@@ -190,7 +238,7 @@ The `omarchy.indicators` widget loads individual bar indicators from `indicators
 
 ## Orientation
 
-All widgets work in `top`, `bottom`, `left`, and `right` positions. Popups anchor on the side opposite the bar edge, sliding into the workspace. Vertical bars use 28px width; widgets that show text fall back to compact icon-only forms (e.g. `media` hides its scrolling label).
+All widgets work in `top`, `bottom`, `left`, and `right` positions. Popups anchor on the side opposite the bar edge, sliding into the workspace. Vertical bars use 28px width; widgets that show text fall back to compact icon-only forms (e.g. `media` hides its scrolling label), while the util readouts switch to a stacked icon-over-percentage column (see [System utilization widgets](#system-utilization-widgets)).
 
 ## Custom user modules
 
