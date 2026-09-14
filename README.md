@@ -58,7 +58,7 @@ Install with:
 
 ```bash
 omarchy plugin add https://github.com/chapaghetti/ramen-bar.git --enable
-sleep 2
+sleep 3
 omarchy restart shell
 ```
 
@@ -66,7 +66,7 @@ Remove with:
 
 ```bash
 omarchy plugin remove ramen.bar
-sleep 2
+sleep 3
 omarchy refresh shell
 ```
 
