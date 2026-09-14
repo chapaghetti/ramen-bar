@@ -40,6 +40,10 @@ moves you make on the bar are left alone and persist. If your layout is
 customized in any way — a command widget, or a left section that doesn't
 start with `omarchy.menu` — the bar respects it and changes nothing.
 
+The auto-injected install button (and the cpu/mem/disk readouts) can be
+dragged to a new spot like any other widget; the first drag records that
+placement in `shell.json`, after which it moves exactly like the rest.
+
 ### Bundled widgets
 
 Ramen Bar does not rely on extra plugins for its look. Workspaces, tray,
@@ -126,7 +130,7 @@ Install **submenu**. See `AGENTS.md` §6.
 
 The bar config lives under the `bar:` key of [`~/.config/omarchy/shell.json`](../../README.md#shelljson-shape). Out of the box the shell uses [`config/omarchy/shell.json`](../../../config/omarchy/shell.json). Once you customize anything via the bar gestures, `omarchy bar ...`, or by editing shell.json directly, your file is canonical — there is no deep-merge.
 
-The bar is configured directly on the bar itself: drag empty bar space (or click-and-hold) to move the bar to another screen edge, double-left-click empty center-bar space to flip the pill glyph/font color between dark and light (for wallpapers that coax a black font where white reads better; widgets with fixed colors — indicators, battery, the accent-tinted menu glyph — are unaffected), and drag widgets to reorder them. Use `omarchy bar position`, `omarchy bar transparent`, `omarchy bar move`, and `omarchy bar set` from scripts. Enable or disable widgets with `omarchy plugin enable` and `omarchy plugin disable` (widget ids come from `omarchy plugin list`).
+The bar is configured directly on the bar itself: drag empty bar space (or click-and-hold) to move the bar to another screen edge, double-left-click empty center-bar space to toggle the pill surfaces between the translucent theme pill ("light" look) and stark black ("dark" look) — text/icons stay light in both modes so glyph contrast always holds, and the change sweeps the bar left → right and recedes right → left on the way back; widgets with fixed colors (indicators, battery, the accent-tinted menu glyph) are unaffected), and drag widgets to reorder them. Use `omarchy bar position`, `omarchy bar transparent`, `omarchy bar move`, and `omarchy bar set` from scripts. Enable or disable widgets with `omarchy plugin enable` and `omarchy plugin disable` (widget ids come from `omarchy plugin list`).
 
 Example `shell.json` (bar subtree only shown):
 

@@ -138,9 +138,16 @@ derives from the active item:
 ### Property injection (`injectProps`, ~line 2379)
 After an item loads the bar sets, **only if the target declares the
 property**:
-- `bar`     → `root` for first-party widgets, else `root.pluginBarApiFor(...)`
+- `bar`     → `root.pluginBarApiFor(...)` for **every** widget (first-party
+  and custom alike); for first-party/bundled widgets `api.shell` is set to
+  `root.shell` so `bar.shell.updateEntryInline` / `bar.shell.summon` /
+  `firstPartyServiceFor` keep working
 - `moduleName` (string)
 - `settings` (object)
+
+The per-slot facade is what makes the foreground sweep (§"Foreground flip
+sweep") able to stagger first-party pills: each widget's `bar.foreground`
+binding reads that pill's own wave offset instead of the shared root color.
 
 **The injected `bar` for a custom module is a `PluginBarApi` facade, not the
 Bar.** It exposes (see `/usr/share/omarchy/shell/Ui/PluginBarApi.qml`):
@@ -154,6 +161,33 @@ Bar.** It exposes (see `/usr/share/omarchy/shell/Ui/PluginBarApi.qml`):
 
 Do not write custom modules that reach for Bar-only APIs (that path exists
 only for first-party widgets).
+
+### Foreground flip sweep
+Double-clicking empty bar space calls `toggleForegroundInversion()`:
+- All pills share one wave clock (`flipSweepClock`, a `NumberAnimation`
+  0→1); each pill's glyph color is `mix(from, to, flipProgressFor(index))`
+  where the per-pill start offset comes from its left→right position in the
+  rendered layout (`capturePluginBarOrder`, :: `flipOrder`).
+- **Toward inverted sweeps left→right; the return to base polarity recedes
+  right→left** (`flipDirection = nextInverted ? 1 : -1`).
+- `foreground`/`barForeground` route through the same helpers
+  (`sweptColorFor`/`sweptBarColorFor`), and the existing `Behavior on
+  barForeground` (420ms) is gated off while a sweep runs
+  (`foregroundFlipEpoch === 0`), so it cannot fight the wave.
+- **The pill surfaces toggle between the theme pill and stark black**
+  (`sweptPillColorFor` per slot): text/icons stay **light in both modes** so
+  the glyph/pill contrast always holds — default "light" look = the translucent
+  theme pill (`Color.popups.background`), inverted "dark" look = stark black
+  (`#000000`). Each pill uses the same wave offset as its own glyph
+  (`flipOrderIndexOf(pluginApiId)`), so the pill change reads as a coordinated
+  L→R / R→L wash alongside the subtle theme→white text shimmer.
+- `applyBarConfig` early-returns when the normalized layout is identical to
+  the live one (deep equality). A pure `foregroundInverted` flip therefore
+  does **not** reassign `layoutConfig` / bump `barConfigSerial`, so no slot
+  rebuild and no "second fade" of the custom modules. This is what removed
+  the old root-first / ramen-second double-fade.
+- When `foregroundAnimationEnabled` is false (transparent-flicker guard) the
+  flip is applied instantly (`flipSweepClock = 1`).
 
 ---
 
@@ -254,9 +288,10 @@ flatpak logo `U+F0213`. Stock menu/indicators reuse these.
 - **Drag reorder "won't stick" / widgets stuck in place** → pre-marker
   adoption: an all-stock non-canonical layout was re-adopted and clawed back
   to canonical on every config change. `bar.ramenAdopted === true` must be
-  present in `shell.json`; the drag writes via `moveModuleInConfig` →
-  `mutateShellConfig` (atomic in the shell, survives). Restore/verify the
-  marker; do not hand-edit the file non-atomically (see below).
+  present in `shell.json`; the drag writes via
+  `materializeInjectedModuleInConfig` → `mutateShellConfig` (atomic in the
+  shell, survives). Restore/verify the marker; do not hand-edit the file
+  non-atomically (see below).
 - **JSON edits from python**: write `ensure_ascii=False` if the file embeds
   glyph chars, or the glyphs are replaced by `\u` escapes and break/change.
   Stage + `os.replace` (atomic); a non-atomic `open(p,"w")` can race the
@@ -313,6 +348,23 @@ override defaults.
 render time (like the util widgets), and adoption only ever rewrites the
 *persisted* layout. If a user hands you a layout "missing" the button, it is
 rendered regardless — check `layoutHasId` presence instead of `shell.json`.
+
+**Injected entries are draggable.** A drop position is defined by the
+*rendered* layout, not `shell.json` (the source/target pill may be an
+auto-injected neighbor such as cpu/mem/disk that has never been
+persisted), so `dropBarModule` resolves every drop with
+`materializeInjectedModuleInConfig` against `layoutConfig`, never against
+the persisted rows. The source is removed from its rendered region and
+inserted into the destination at the rendered index of `beforeName`, then
+**both involved regions are persisted verbatim from their rendered
+content** — surgical persistence would leave cpu unwritten, the injectors
+`ensureSystemStats`/`ensurePkgInstaller` re-add still-missing stats at the
+region end, and a drop placed "after CPU" would silently land before it.
+The full-row persist pins the whole arrangement on the first drag of an
+injected entry; after that the entries are ordinary persisted rows and
+`hasCustomLayout` keeps adoption from clawing the row back. This is also why
+`ensureSystemStats` takes the full layout — a stat dragged to another region
+is seen as present there and must not be re-injected into `left`.
 
 ---
 
