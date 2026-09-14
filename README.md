@@ -156,6 +156,7 @@ To drop the widgets, delete the `ensureSystemStats` injection in `Bar.qml`.
 ## Package install menu (Flatpak / AUR / repo)
 
 <img width="277" height="152" alt="image" src="https://github.com/user-attachments/assets/ae0d3ac5-eac3-447a-bea9-c019c85e5538" />
+<img width="891" height="609" alt="image" src="https://github.com/user-attachments/assets/ef22eaef-c46b-4a8e-91f4-a19af27ab51f" />
 
 Built into the plugin — no setup. Installing the bar adds a package-button
 that opens a popup with three install TUIs:
