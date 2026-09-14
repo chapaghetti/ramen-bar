@@ -5,6 +5,6 @@
     "icon": "󰏓",
     "label": "Flatpak",
     "when": "command -v flatpak",
-    "action": "xdg-terminal-exec --app-id=org.omarchy.terminal omarchy-pkg-flatpak-install"
+    "action": "xdg-terminal-exec --app-id=org.omarchy.terminal ~/.config/omarchy/plugins/ramen.bar/scripts/omarchy-pkg-flatpak-install"
   }
 }

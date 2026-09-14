@@ -58,9 +58,10 @@ widgets/                           first-party plugin widgets
   ActiveWindow.qml ... Workspaces.qml   plus *.manifest.json siblings
   bundle/                          Ramen's lookalike overrides (workspaces/tray/
                                     indicators/power) keyed on dot-suffix ids
-contrib/                           opt-in custom features, not part of core install
-  bar-modules/pkg-install.qml      contrib: 3-choice install menu bar button
-  menu-extensions/omarchy-menu.jsonc  contrib: adds "Flatpak" to Install submenu
+contrib/                           secondary features (see §6)
+  bar-modules/pkg-install.qml      bar module for the pkg-install button — auto-
+                                    injected via Bar.qml ensurePkgInstaller
+  menu-extensions/omarchy-menu.jsonc  manual opt-in: "Flatpak" in Install submenu
 ```
 
 Everything shipped by the omarchy plugin system resolves ids in the form
@@ -86,10 +87,27 @@ custom modules.
   and `type:"qml"`), or (b) `omarchy.menu` is not in `left`.
 - `isRamenLayout()` = `objectsEqual(config.layout, ramenBarLayout.layout)`
   (one-directional deep equality on canonical keys).
+- `isRamenAdopted()` = `barConfig.ramenAdopted === true`. The marker does not
+  render anything; it rides inside the `bar:` subtree of `shell.json`, which
+  `mutateShellConfig` clones verbatim (it preserved `bar.id`), so it survives
+  every shell persist. It is not consumed by the host's config model.
 - `adoptRamenLayout()` writes `bar.position / transparent / gap / layout` to
   the canonical layout via `root.shell.mutateShellConfig(...)` — **only when
-  `!hasCustomLayout() && !isRamenLayout()`**.
+  `!hasCustomLayout() && !isRamenAdopted()`**. Canonicalizing persists stamp
+  `ramenAdopted: true` in the same write. If the persisted layout already
+  equals canonical but the marker is missing, `adoptRamenMark()` writes just
+  the marker (no layout touch).
 - Fired from `Component.onCompleted` and `onBarConfigChanged`.
+
+**One-shot semantics:** the marker makes adoption fire at most once per
+config. After it, an all-stock layout may differ from canonical (exactly what
+a drag-to-reorder produces now that custom entries are injected at render
+time) and adoption is a no-op, so **reorders and widget moves persist**.
+Before the marker, any stock-only non-canonical layout was re-adopted on the
+next `onBarConfigChanged` and clawed back to canonical — a drag "wouldn't
+stick". Keep the marker check ahead of the layout equality check in
+`adoptRamenLayout()`. A user upgrading with a stock-only customized layout is
+migrated (canonicalized) once, exactly like a first boot, then protected.
 
 **Consequence (critical):** any entry in `shell.json` that is neither an
 `exec`-command nor recognized by `customModuleType()` will be treated as
@@ -233,17 +251,29 @@ flatpak logo `U+F0213`. Stock menu/indicators reuse these.
   then says `bar option ramen.bar failed to load, falling back to
   omarchy.bar`, and the **stock** bar renders (custom modules and bundled
   overrides silently gone). Always grep the log after a control edit.
+- **Drag reorder "won't stick" / widgets stuck in place** → pre-marker
+  adoption: an all-stock non-canonical layout was re-adopted and clawed back
+  to canonical on every config change. `bar.ramenAdopted === true` must be
+  present in `shell.json`; the drag writes via `moveModuleInConfig` →
+  `mutateShellConfig` (atomic in the shell, survives). Restore/verify the
+  marker; do not hand-edit the file non-atomically (see below).
 - **JSON edits from python**: write `ensure_ascii=False` if the file embeds
   glyph chars, or the glyphs are replaced by `\u` escapes and break/change.
+  Stage + `os.replace` (atomic); a non-atomic `open(p,"w")` can race the
+  shell's FileView reload, the parse fails, `shellConfig` falls back to
+  builtin defaults mid-flight, and a later persist clones the defaults —
+  signature: `bar.id` vanishes + layout resets to canonical. Real shell writes
+  are atomic, so only external hand-edits hit this.
 - Keep the deployed clone and repo byte-identical before concluding anything
   (`cmp`).
 
 ---
 
-## 6. The package-install feature (contrib)
+## 6. The package-install feature (out of the box)
 
-Why it's here and how the three pieces wire together. All three are opt-in;
-none are required for the bar to render.
+Wired into the bar automatically; a **fresh install gets the full feature**
+(bar button + Flatpak TUI) with zero manual steps. All three pieces ship
+inside the plugin directory:
 
 1. **`scripts/omarchy-pkg-flatpak-install`** — fzf TUI mirroring
    `omarchy-pkg-install` (stock, in `/usr/share/omarchy/bin/`) for Flatpaks.
@@ -251,30 +281,38 @@ none are required for the bar to render.
    sort -fu | fzf --multi` with preview `flatpak remote-info {1}`, then
    `xargs flatpak install --assumeyes --noninteractive`. Remote overridable
    via `FLATPAK_INSTALL_REMOTE` (default `flathub`). Ends with
-   `omarchy-show-done`. Install for the user: `~/.local/bin/` (on PATH).
+   `omarchy-show-done`. Launched by absolute path from the module, so no
+   `$HOME/.local/bin` copy or `PATH` change is required (that old install
+   method still works for standalone use).
 
-2. **`contrib/menu-extensions/omarchy-menu.jsonc`** → copy to
-   `~/.config/omarchy/extensions/omarchy-menu.jsonc`. Defines
-   `install.flatpak` under the Install submenu (dotted id→parent),
-   `when: command -v flatpak`, `action:` the `xdg-terminal-exec` launch above.
-   Merge mechanics live in
-   `/usr/share/omarchy/shell/plugins/menu/MenuModel.js` (`mergeMenuSources`):
-   user file keyed by id, derived parent, user rows appended last, user fields
-   override defaults. `Menu.qml` reads
-   `$HOME/.config/omarchy/extensions/omarchy-menu.jsonc`.
+2. **`Bar.qml` auto-injection** — `ensurePkgInstaller` (mirrors
+   `ensureSystemStats`) injects an entry
+   `{id:"pkg-install", type:"qml", source: barModuleDir+"/pkg-install.qml",
+   installers:{package,aur,flatpak}}` into rendered `left` **only when no
+   `pkg-install` entry exists anywhere** in the layout (`layoutHasId` scans
+   left/center/right). Existing entries win: users keep placement/settings.
+   The `source` (absolute, inside the plugin) means no
+   `~/.config/omarchy/bar/modules/` copy is needed either. `barModuleDir`
+   and `sysStatsScriptDir` both hardcode
+   `~/.config/omarchy/plugins/ramen.bar/...` (omarchy's install convention).
+   Do not rename the plugin id (`ramen.bar`).
 
-3. **`contrib/bar-modules/pkg-install.qml`** → copy to
-   `~/.config/omarchy/bar/modules/pkg-install.qml` and add the layout entry
-   `{"id":"pkg-install","type":"qml"}` under `bar.layout.left`. Shows up as a
-   package icon next to `omarchy.menu`; click → popup with **Package (Arch
-   repo)** / **AUR** / **Flatpak**, each launching the stock `omarchy-pkg-*`
-   TUI via `xdg-terminal-exec`. Rows are gated on `command -v` (both the
-   script and, for flatpak, the `flatpak` binary) so the menu degrades
-   gracefully on machines without flatpak.
+3. **`contrib/bar-modules/pkg-install.qml`** — resolves its three launch
+   commands from injected `settings.installers` (falls back to bare stock
+   names when absent, e.g. a user-placed standalone copy). Flatpak row also
+   requires the `flatpak` binary. `command -v` on an absolute path works.
 
-Stock omarchy commands (already installed): `omarchy-pkg-install` (repo),
-`omarchy-pkg-aur-install` (AUR), in `/usr/share/omarchy/bin`; the flatpak one
-is the only user-supplied script.
+Manual opt-in left: `contrib/menu-extensions/omarchy-menu.jsonc` → copy to
+`~/.config/omarchy/extensions/omarchy-menu.jsonc` (adds *Flatpak* to the
+Install submenu). `when: command -v flatpak`; merge mechanics live in
+`/usr/share/omarchy/shell/plugins/menu/MenuModel.js` (`mergeMenuSources`):
+user file keyed by id, derived parent, user rows appended last, user fields
+override defaults.
+
+`hasCustomLayout()` never clobbers the injected entry: it is applied at
+render time (like the util widgets), and adoption only ever rewrites the
+*persisted* layout. If a user hands you a layout "missing" the button, it is
+rendered regardless — check `layoutHasId` presence instead of `shell.json`.
 
 ---
 

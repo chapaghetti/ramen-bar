@@ -47,6 +47,10 @@ Item {
   // ~/.config/omarchy/plugins/ramen.bar/, so command entries are baked into
   // the layout here rather than requiring each user to write shell.json.
   property string sysStatsScriptDir: home + "/.config/omarchy/plugins/ramen.bar/scripts"
+  // The package-install button uses a contrib QML module bundled in the same
+  // plugin directory, so it is baked into the layout at render time instead of
+  // requiring each user to copy the module file or hand-edit shell.json.
+  property string barModuleDir: home + "/.config/omarchy/plugins/ramen.bar/contrib/bar-modules"
   // Ramen Bar bundles its own variants of the workspaces / tray / indicators /
   // power widgets so its look is fully self-contained: whatever widget ids a
   // layout references, these render instead of the built-in ones. Each entry is
@@ -691,7 +695,7 @@ Timer {
   function normalizeLayout(layout) {
     var normalized = Util.normalizeLayout(Util.isPlainObject(layout) ? layout : fallbackBarConfig.layout)
     return {
-      left:   pinTrayToInner(ensureSystemStats(normalized.left), "left"),
+      left:   pinTrayToInner(ensurePkgInstaller(ensureSystemStats(normalized.left), normalized), "left"),
       center: pinTrayToInner(normalized.center, "center"),
       right:  pinTrayToInner(normalized.right, "right")
     }
@@ -727,6 +731,39 @@ Timer {
       })
     }
     return rows
+  }
+
+  // The package-install button ships its own module and TUI script, so inject
+  // it into the left region when the layout has no pkg-install entry anywhere.
+  // An existing entry beats this (id, source, installers config wire through,
+  // users keep their placement); the injected rich settings point the module
+  // at the exact commands to launch.
+  function ensurePkgInstaller(entries, layout) {
+    var rows = Array.isArray(entries) ? entries.slice() : []
+    if (layoutHasId(layout, "pkg-install")) return rows
+    rows.push({
+      id: "pkg-install",
+      type: "qml",
+      source: barModuleDir + "/pkg-install.qml",
+      installers: {
+        package: "omarchy-pkg-install",
+        aur: "omarchy-pkg-aur-install",
+        flatpak: sysStatsScriptDir + "/omarchy-pkg-flatpak-install"
+      }
+    })
+    return rows
+  }
+
+  function layoutHasId(layout, id) {
+    var regions = ["left", "center", "right"]
+    for (var r = 0; r < regions.length; r++) {
+      var values = layout && layout[regions[r]]
+      if (!Array.isArray(values)) continue
+      for (var i = 0; i < values.length; i++) {
+        if (BarModel.entryId(values[i]) === id) return true
+      }
+    }
+    return false
   }
 
   // The tray drawer reveals inward (away from the bar edge). Place it at the
@@ -824,20 +861,31 @@ Timer {
       || BarModel.entryIndex(Array.isArray(layout.left) ? layout.left : [], "omarchy.menu") < 0
   }
 
-  // Adoption is a one-way migration. From the first write onward the
-  // persisted layout IS Ramen's canonical one, so re-adopting would clobber
-  // deliberate edits — a drag to another edge, a gap tweak — on every config
-  // change. Recognise the layout we already wrote and leave the rest alone.
+  // Adoption is a one-way migration. Once it has run (or the persisted layout
+  // is already Ramen's), the bar marks the config as adopted; from then on
+  // every per-widget edit — a drag to reorder, a position tweak — is left
+  // alone. Before the marker existed, any all-stock layout that differed from
+  // canonical (exactly what a drag produces once custom entries are injected
+  // at render time instead of persisted) was re-adopted and clobbered back.
   function isRamenLayout() {
     var config = Util.isPlainObject(barConfig) ? barConfig : fallbackBarConfig
     return Util.isPlainObject(config.layout)
       && root.objectsEqual(config.layout, ramenBarLayout.layout)
   }
 
+  function isRamenAdopted() {
+    var config = Util.isPlainObject(barConfig) ? barConfig : fallbackBarConfig
+    return config.ramenAdopted === true
+  }
+
   function adoptRamenLayout() {
     if (!root.shell || typeof root.shell.mutateShellConfig !== "function") return
     if (root.hasCustomLayout()) return
-    if (root.isRamenLayout()) return
+    if (root.isRamenAdopted()) return
+    if (root.isRamenLayout()) {
+      root.adoptRamenMark()
+      return
+    }
     root.shell.mutateShellConfig(function(config) {
       if (!Util.isPlainObject(config.bar)) config.bar = {}
       config.bar.position = ramenBarLayout.position
@@ -845,6 +893,17 @@ Timer {
       config.bar.gap = ramenBarLayout.gap
       config.bar.centerAnchor = ramenBarLayout.centerAnchor
       config.bar.layout = JSON.parse(JSON.stringify(ramenBarLayout.layout))
+      config.bar.ramenAdopted = true
+    })
+  }
+
+  function adoptRamenMark() {
+    var config = Util.isPlainObject(barConfig) ? barConfig : fallbackBarConfig
+    if (config.ramenAdopted === true) return
+    if (!root.shell || typeof root.shell.mutateShellConfig !== "function") return
+    root.shell.mutateShellConfig(function(target) {
+      if (!Util.isPlainObject(target.bar)) return
+      target.bar.ramenAdopted = true
     })
   }
 

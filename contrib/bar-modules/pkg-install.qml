@@ -13,10 +13,22 @@ Item {
   // semantics: only an explicit fail hides a row), so first paint is complete
   // and a later check can take a row away.
   property var available: ({})
+  // TUI commands the rows launch. The bar injects settings.installers with the
+  // exact paths when the module ships bundled (package/aur are stock commands
+  // on PATH, flatpak is the plugin's own script); users wiring a standalone
+  // copy fall back to the bare stock names.
+  readonly property string packageCmd: root.installer("package", "omarchy-pkg-install")
+  readonly property string aurCmd: root.installer("aur", "omarchy-pkg-aur-install")
+  readonly property string flatpakCmd: root.installer("flatpak", "omarchy-pkg-flatpak-install")
   implicitWidth: button.implicitWidth
   implicitHeight: button.implicitHeight
   width: button.implicitWidth
   height: button.implicitHeight
+
+  function installer(key, fallback) {
+    var configured = root.settings && root.settings.installers && root.settings.installers[key]
+    return configured || fallback
+  }
 
   function runTerminal(command) {
     if (!command) return
@@ -26,9 +38,11 @@ Item {
   function checkCommands() {
     if (checkProc.running) return
     checkProc.collected = ""
+    var cmds = [root.packageCmd, root.aurCmd, root.flatpakCmd, "flatpak"]
     checkProc.command = ["bash", "-lc",
-      "for c in omarchy-pkg-install omarchy-pkg-aur-install omarchy-pkg-flatpak-install flatpak; do " +
-      "command -v \"$c\" >/dev/null 2>&1 && echo \"i:$c:1\" || echo \"i:$c:0\"; done"]
+      cmds.map(function(c) {
+        return "command -v \"" + c + "\" >/dev/null 2>&1 && echo \"i:" + c + ":1\" || echo \"i:" + c + ":0\""
+      }).join("; ")]
     checkProc.running = true
   }
 
@@ -65,17 +79,17 @@ Item {
       InstallRow {
         text: "Package (Arch repo)"
         icon: "󰏓"
-        command: "omarchy-pkg-install"
+        command: root.packageCmd
       }
       InstallRow {
         text: "AUR"
         icon: "󰣇"
-        command: "omarchy-pkg-aur-install"
+        command: root.aurCmd
       }
       InstallRow {
         text: "Flatpak"
         icon: "󰈓"
-        command: "omarchy-pkg-flatpak-install"
+        command: root.flatpakCmd
         extraCheck: "flatpak"
       }
     }

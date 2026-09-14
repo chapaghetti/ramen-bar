@@ -33,10 +33,12 @@ from your `~/.config/omarchy/shell.json` as usual.
 When Ramen Bar loads while you are still on the **stock** Omarchy bar layout,
 it adopts its own layout (widgets, position, transparency, gap) and persists
 the change to `~/.config/omarchy/shell.json` through the shell's own config
-API. This is what makes `omarchy refresh shell` followed by the install above
-land right back on the Ramen setup. If your layout is customized in any way —
-a command widget, or a left section that doesn't start with `omarchy.menu` —
-the bar respects it and changes nothing.
+API, stamping `ramenAdopted: true` under `bar:`. This is what makes
+`omarchy refresh shell` followed by the install above land right back on the
+Ramen setup. Adoption is **one-shot**: once it has run, widget reorders and
+moves you make on the bar are left alone and persist. If your layout is
+customized in any way — a command widget, or a left section that doesn't
+start with `omarchy.menu` — the bar respects it and changes nothing.
 
 ### Bundled widgets
 
@@ -101,22 +103,24 @@ To drop the widgets, delete the `ensureSystemStats` injection in `Bar.qml`.
 
 ## Package install menu (Flatpak / AUR / repo)
 
-Opt-in feature under `contrib/` that adds a bar button opening a popup with
-three install TUIs:
+Built into the plugin — no setup. Installing the bar adds a package-button
+that opens a popup with three install TUIs:
 
-- `contrib/bar-modules/pkg-install.qml` → copy to
-  `~/.config/omarchy/bar/modules/pkg-install.qml`, then add
-  `{ "id": "pkg-install", "type": "qml" }` to `bar.layout.left`.
-- `contrib/menu-extensions/omarchy-menu.jsonc` → copy to
-  `~/.config/omarchy/extensions/omarchy-menu.jsonc` (adds *Flatpak* to the
-  Install submenu).
-- `scripts/omarchy-pkg-flatpak-install` → copy to `~/.local/bin/` (the
-  Flatpak install TUI; `FLATPAK_INSTALL_REMOTE` overrides the default
-  `flathub` remote).
+- **Package (Arch repo)** → the stock `omarchy-pkg-install`
+- **AUR** → the stock `omarchy-pkg-aur-install`
+- **Flatpak** → the bundled `scripts/omarchy-pkg-flatpak-install` TUI
+  (`FLATPAK_INSTALL_REMOTE` overrides the default `flathub` remote)
 
-Rows are gated on what's actually installed (`command -v`), so the Flatpak
-option disappears on machines without flatpak and everything still works.
-See `AGENTS.md` §6 for details.
+The bar injects the button into `bar.layout.left` at render time when your
+layout has no `pkg-install` entry (place your own anywhere to take over), and
+it ships the module and script inside the plugin so no files need copying or
+`PATH` tweaks. Rows are gated on what's actually installed (`command -v`), so
+the Flatpak option disappears on machines without flatpak and everything
+still works.
+
+Optional extra: `contrib/menu-extensions/omarchy-menu.jsonc` → copy to
+`~/.config/omarchy/extensions/omarchy-menu.jsonc` to also add *Flatpak* to the
+Install **submenu**. See `AGENTS.md` §6.
 
 ## Customizing
 
