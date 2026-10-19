@@ -2,6 +2,7 @@ import Quickshell
 import Quickshell.Io
 import QtQuick
 import qs.Commons
+import qs.Commons as Commons
 import qs.Ui
 
 Item {
@@ -135,7 +136,7 @@ Item {
       leftAlign: true
       iconText: row.icon
       text: row.text
-      foreground: root.bar ? root.bar.foreground : Color.foreground
+      foreground: root.bar ? root.bar.foreground : Commons.Color.foreground
       iconSize: Style.font.body
       fontSize: Style.font.bodySmall
       horizontalPadding: Style.space(10)

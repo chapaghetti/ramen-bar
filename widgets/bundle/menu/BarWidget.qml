@@ -1,6 +1,7 @@
 import QtQuick
 import qs.Ui
 import qs.Commons
+import qs.Commons as Commons
 
 BarWidget {
   id: root
@@ -15,7 +16,7 @@ BarWidget {
     bar: root.bar
     text: "\ue900"
     fontFamily: "omarchy"
-    foreground: Color.accent
+    foreground: Commons.Color.accent
     horizontalMargin: 7.5
     onPressed: function(button) {
       if (!root.bar) return

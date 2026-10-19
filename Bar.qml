@@ -5,6 +5,7 @@ import Quickshell.Wayland
 import QtQuick
 import QtQuick.Layouts
 import qs.Commons
+import qs.Commons as Commons
 import qs.Ui
 import "BarModel.js" as BarModel
 
@@ -128,9 +129,9 @@ Timer {
   property string fontFamily: Style.font.family
   // Bound to the central Color singleton so the bar tracks shell.toml's
   // [bar] section. Property names kept for the rest of this file's bindings.
-  property color themeForeground: Color.bar.text
-  property color themeContrastForeground: Color.background
-  property color transparentForeground: Color.bar.text
+  property color themeForeground: Commons.Color.bar.text
+  property color themeContrastForeground: Commons.Color.background
+  property color transparentForeground: Commons.Color.bar.text
   // The glyph color the bar would use if the toggle were off.
   readonly property color baseGlyphColor: root.useTransparentForeground ? root.transparentForeground : root.themeForeground
   // Text/icons stay on the light side in both bar modes; the double-click
@@ -139,8 +140,8 @@ Timer {
   property color foreground: root.sweptColorFor(root.clusterSweepIndex(), root.invertedForeground)
   property color barForeground: root.sweptBarColorFor(root.clusterSweepIndex(), root.invertedForeground)
   property bool foregroundAnimationEnabled: true
-  property color background: Color.bar.background
-  property color urgent: Color.bar.active
+  property color background: Commons.Color.bar.background
+  property color urgent: Commons.Color.bar.active
   property int foregroundFlipEpoch: 0
   property var flipOrder: []
   property bool flipOriginInverted: false
@@ -153,7 +154,7 @@ Timer {
   // translucent — the "light" look) and a stark black surface ("dark" look).
   // Text stays on the light side in both modes so the contrast always holds.
   readonly property color starkPillColor: "#000000"
-  readonly property color pillThemeColor: Color.popups.background
+  readonly property color pillThemeColor: Commons.Color.popups.background
 
   Behavior on barForeground { enabled: root.foregroundAnimationEnabled && root.foregroundFlipEpoch === 0; ColorAnimation { duration: 420; easing.type: Easing.InOutCubic } }
   Behavior on background { ColorAnimation { duration: 420; easing.type: Easing.InOutCubic } }
@@ -1963,8 +1964,8 @@ function clusterSweepIndex() {
         id: tooltipBubble
         implicitWidth: tooltipLabel.implicitWidth + 20
         implicitHeight: tooltipLabel.implicitHeight + 14
-        color: Color.tooltip.background
-        borderSpec: Border.surfaceSpec("tooltip", "border", Color.tooltip.border, 1)
+        color: Commons.Color.tooltip.background
+        borderSpec: Border.surfaceSpec("tooltip", "border", Commons.Color.tooltip.border, 1)
         radius: Style.cornerRadius
 
         Text {
@@ -1972,7 +1973,7 @@ function clusterSweepIndex() {
           textFormat: Text.PlainText
           anchors.centerIn: parent
           text: root.tooltipText
-          color: Color.tooltip.text
+          color: Commons.Color.tooltip.text
           font.family: root.fontFamily
           font.pixelSize: Style.font.body
           horizontalAlignment: Text.AlignHCenter
@@ -2091,7 +2092,7 @@ function clusterSweepIndex() {
       y: targetRect ? Math.round(targetRect.y) : 0
       width: targetRect ? targetRect.width : 0
       height: targetRect ? targetRect.height : 0
-      color: Color.accent
+      color: Commons.Color.accent
       radius: Math.min(width, height) / 2
     }
   }
@@ -2457,7 +2458,7 @@ function clusterSweepIndex() {
     readonly property int pillPadX: root.vertical ? 0 : Style.space(3)
     readonly property int pillPadY: root.vertical ? Style.space(3) : 0
     readonly property color pillColor: root.sweptPillColorFor(root.flipOrderIndexOf(pluginApiId), root.invertedForeground)
-    readonly property color pillBorder: Color.popups.border
+    readonly property color pillBorder: Commons.Color.popups.border
     readonly property int pillRadius: Math.min(Style.space(8), Math.min(implicitWidth, implicitHeight) / 2)
     width: implicitWidth
     height: implicitHeight
@@ -2553,7 +2554,7 @@ function clusterSweepIndex() {
 
       visible: opacity > 0
       opacity: slot.panelOpen && !slot.dragSource ? 0.9 : 0
-      color: Color.accent
+      color: Commons.Color.accent
       radius: Math.min(width, height) / 2
       width: root.vertical ? Style.space(2) : slot.panelIndicatorExtent
       height: root.vertical ? slot.panelIndicatorExtent : Style.space(2)
