@@ -13,7 +13,7 @@
           "exec": "~/.config/omarchy/plugins/ramen.bar/scripts/disk-usage",
           "interval": 5,
           "tooltip": "Disk usage on /",
-          "onClick": "omarchy-launch-or-focus-tui gdu /"
+          "onClick": "omarchy-launch-or-focus disktree 'uwsm-app -- disktree /'"
         },
         {
           "id": "mem",

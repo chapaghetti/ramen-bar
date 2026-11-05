@@ -837,7 +837,7 @@ Timer {
       }
     }
     var stats = [
-      { id: "disk", tooltip: "Disk usage on /", onClick: "omarchy-launch-or-focus-tui gdu /" },
+      { id: "disk", tooltip: "Disk usage on /", onClick: "omarchy-launch-or-focus disktree 'uwsm-app -- disktree /'" },
       { id: "mem", tooltip: "Memory utilization", onClick: "omarchy-launch-or-focus-tui btop" },
       { id: "cpu", tooltip: "CPU utilization", onClick: "omarchy-launch-or-focus-tui btop" }
     ]

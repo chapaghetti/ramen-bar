@@ -45,7 +45,7 @@ this plugin and trigger on the dot-suffix of whatever widget id a layout
 mentions — stock ids, clones, or anything else.
 
 **Live system stats, injected first.** `disk`, `mem`, and `cpu` always appear
-in the left section on a 5-second cadence and open `gdu`/`btop` when clicked.
+in the left section on a 5-second cadence and open `disktree`/`btop` when clicked.
 When the bar is pinned to a screen edge, they reflow into a stacked,
 center-aligned icon-above-percentage column instead of a squeezed single line.
 
@@ -141,7 +141,7 @@ layout, they win (so you can move them or change their settings).
 
 | Widget | Script | Click |
 |--------|--------|-------|
-| `disk` | `scripts/disk-usage` — `df -P /` used % | opens `gdu` |
+| `disk` | `scripts/disk-usage` — `df -P /` used % | opens `disktree` |
 | `mem`  | `scripts/mem-usage` — `free` used % | opens `btop` |
 | `cpu`  | `scripts/cpu-usage` — `top` load % | opens `btop` |
 
