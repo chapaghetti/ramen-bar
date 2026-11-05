@@ -97,13 +97,16 @@ Timer {
     position: "top",
     transparent: false,
     centerAnchor: "omarchy.clock",
-    layout: { left: [], center: [], right: [] }
+    layout: { left: [], centerBegin: [], center: [], centerEnd: [], right: [] }
   })
   property var layoutConfig: fallbackBarConfig.layout
   property string centerAnchor: ""
   property bool requestedTransparent: false
   property bool useTransparentForeground: false
   property bool transparent: false
+  property bool glassy: false
+  readonly property color glassBackground: Qt.rgba(background.r, background.g, background.b, Math.min(background.a, 0.35))
+  readonly property color barSurfaceColor: transparent ? "transparent" : (glassy ? glassBackground : background)
   // Double-left-clicking empty bar space toggles the pill surfaces between
   // the theme pill (soft, translucent — "light" look) and stark black ("dark"
   // look). Text/icons stay light in both modes so the glyph/pill contrast
@@ -149,7 +152,7 @@ Timer {
   property int flipStepMs: 65
   property int flipPillMs: 200
   property int flipDirection: 1
-  property var barRegions: ["left", "center", "right"]
+  property var barRegions: ["left", "centerBegin", "center", "centerEnd", "right"]
   // Alongside the glyph flip, the pills toggle between the theme pill (soft,
   // translucent — the "light" look) and a stark black surface ("dark" look).
   // Text stays on the light side in both modes so the contrast always holds.
@@ -788,12 +791,26 @@ Timer {
 
   // Apply tray-pinning on top of the shared layout normalization so the
   // bar host and scriptable config helpers can't drift on entry shape.
+  // Layouts written before Omarchy 4.5 pin one center widget with
+  // `centerAnchor`; split them into the modern centerBegin/center/centerEnd
+  // sections so an anchored clock keeps the exact middle of the bar.
   function normalizeLayout(layout) {
     var normalized = Util.normalizeLayout(Util.isPlainObject(layout) ? layout : fallbackBarConfig.layout)
+    var center = normalized.center || []
+    var centerBegin = normalized.centerBegin || []
+    var centerEnd = normalized.centerEnd || []
+    var index = root.centerAnchor ? BarModel.entryIndex(center, root.centerAnchor) : -1
+    if (index !== -1) {
+      centerBegin = centerBegin.concat(center.slice(0, index))
+      centerEnd = center.slice(index + 1).concat(centerEnd)
+      center = [center[index]]
+    }
     return {
-      left:   pinTrayToInner(ensurePkgInstaller(ensureSystemStats(normalized.left, normalized), normalized), "left"),
-      center: pinTrayToInner(normalized.center, "center"),
-      right:  pinTrayToInner(normalized.right, "right")
+      left:        pinTrayToInner(ensurePkgInstaller(ensureSystemStats(normalized.left, normalized), normalized), "left"),
+      centerBegin: centerBegin,
+      center:      pinTrayToInner(center, "center"),
+      centerEnd:   centerEnd,
+      right:       pinTrayToInner(normalized.right, "right")
     }
   }
 
@@ -810,7 +827,7 @@ Timer {
       rows.push(values[i])
       if (id) present[id] = true
     }
-    var regions = ["left", "center", "right"]
+    var regions = ["left", "centerBegin", "center", "centerEnd", "right"]
     for (var r = 0; r < regions.length; r++) {
       var regionRows = layout && layout[regions[r]]
       if (!Array.isArray(regionRows)) continue
@@ -860,7 +877,7 @@ Timer {
   }
 
   function layoutHasId(layout, id) {
-    var regions = ["left", "center", "right"]
+    var regions = ["left", "centerBegin", "center", "centerEnd", "right"]
     for (var r = 0; r < regions.length; r++) {
       var values = layout && layout[regions[r]]
       if (!Array.isArray(values)) continue
@@ -883,7 +900,11 @@ Timer {
     var config = Util.isPlainObject(barConfig) ? barConfig : fallbackBarConfig
 
     position = normalizePosition(config.position)
-    setRequestedTransparency(config.transparent === true)
+    // Omarchy 4.5 replaced `transparent` with an opaque/glassy/none look.
+    // Honour whichever key the config carries so both shapes stay usable.
+    var look = config.background || (config.transparent === true ? "none" : "opaque")
+    setRequestedTransparency(look === "none")
+    if (look !== "none") glassy = look === "glassy"
     root.invertedForeground = config.foregroundInverted === true
     centerAnchor = Util.canonicalWidgetId(config.centerAnchor || "")
 
@@ -923,11 +944,13 @@ Timer {
   // deliberately absent — ensureSystemStats guarantees them.
   readonly property var ramenBarLayout: ({
     position: "top",
+    background: "none",
     transparent: true,
     gap: 5,
-    centerAnchor: "omarchy.clock",
+    centerAnchor: "",
     layout: {
       left:   [{ id: "omarchy.menu" }],
+      centerBegin: [],
       center: [
         { id: "omarchy.keyboard-layout" },
         { id: "omarchy.weather" },
@@ -935,6 +958,7 @@ Timer {
         { id: "omarchy.workspaces" },
         { id: "omarchy.indicators" }
       ],
+      centerEnd: [],
       right:  [
         { id: "omarchy.agents" },
         { id: "omarchy.tray" },
@@ -955,8 +979,8 @@ Timer {
     var config = Util.isPlainObject(barConfig) ? barConfig : fallbackBarConfig
     var layout = Util.isPlainObject(config.layout) ? config.layout : {}
     var commandCount = 0
-    for (var r = 0; r < 3; r++) {
-      var region = r === 0 ? "left" : (r === 1 ? "center" : "right")
+    for (var r = 0; r < root.barRegions.length; r++) {
+      var region = root.barRegions[r]
       var rows = Array.isArray(layout[region]) ? layout[region] : []
       for (var i = 0; i < rows.length; i++)
         if (BarModel.moduleString(rows[i], "exec", "") !== ""
@@ -995,6 +1019,7 @@ Timer {
     root.shell.mutateShellConfig(function(config) {
       if (!Util.isPlainObject(config.bar)) config.bar = {}
       config.bar.position = ramenBarLayout.position
+      config.bar.background = ramenBarLayout.background
       config.bar.transparent = ramenBarLayout.transparent
       config.bar.gap = ramenBarLayout.gap
       config.bar.centerAnchor = ramenBarLayout.centerAnchor
@@ -1898,7 +1923,7 @@ function clusterSweepIndex() {
 
     implicitWidth: root.vertical ? root.barSize : 0
     implicitHeight: root.vertical ? 0 : root.barSize
-    color: root.transparent ? "transparent" : root.background
+    color: root.barSurfaceColor
     surfaceFormat.opaque: false
     WlrLayershell.namespace: "omarchy-bar"
     WlrLayershell.layer: WlrLayer.Top
@@ -2068,7 +2093,7 @@ function clusterSweepIndex() {
 
       BorderSurface {
         anchors.fill: parent
-        color: root.transparent ? "transparent" : root.background
+        color: root.barSurfaceColor
         borderSpec: Border.flat(root.barForeground, 1)
         radius: Math.min(Style.cornerRadius, height / 2)
         opacity: root.transparent ? 0.45 : 0.94
@@ -2138,7 +2163,7 @@ function clusterSweepIndex() {
         y: modelData === "bottom" ? parent.height - edgeSize : 0
         width: edgeVertical ? edgeSize : parent.width
         height: edgeVertical ? parent.height : edgeSize
-        color: root.transparent ? "transparent" : root.background
+        color: root.barSurfaceColor
         borderSpec: Border.flat(root.barForeground, 1)
         visible: opacity > 0
         opacity: root.barMoveCandidate === modelData ? (root.transparent ? 0.45 : 0.7) : 0
@@ -2148,12 +2173,6 @@ function clusterSweepIndex() {
         }
       }
     }
-  }
-
-  function findCenterAnchorEntry() {
-    var entries = root.layoutEntries("center")
-    var idx = root.entryIndex(entries, root.centerAnchor)
-    return idx === -1 ? null : entries[idx]
   }
 
   component LeftModules: ModuleList {
@@ -2166,13 +2185,11 @@ function clusterSweepIndex() {
     region: "right"
   }
 
+  // The center box stays in the middle of the bar; centerBegin and centerEnd
+  // hang off its two edges. Legacy centerAnchor configs are split into these
+  // three sections by normalizeLayout, so an anchored widget still lands in
+  // the exact middle.
   component CenterModules: Item {
-    id: centerRoot
-
-    property var entries: root.layoutEntries("center")
-    readonly property bool hasAnchor: root.entryIndex(entries, root.centerAnchor) !== -1
-    readonly property var anchorEntry: root.findCenterAnchorEntry()
-
     Loader {
       anchors.fill: parent
       sourceComponent: root.vertical ? verticalCenterModules : horizontalCenterModules
@@ -2191,34 +2208,24 @@ function clusterSweepIndex() {
         }
 
         ModuleList {
-          visible: !centerRoot.hasAnchor
-          entries: centerRoot.entries
+          id: centerBox
+          entries: root.layoutEntries("center")
           region: "center"
           anchors.centerIn: parent
         }
 
         ModuleList {
-          visible: centerRoot.hasAnchor
-          entries: root.entriesBefore(centerRoot.entries, root.centerAnchor)
-          region: "center"
-          anchors.right: centerAnchorModule.left
-          anchors.verticalCenter: centerAnchorModule.verticalCenter
-        }
-
-        ModuleSlot {
-          id: centerAnchorModule
-          visible: centerRoot.hasAnchor
-          entry: centerRoot.anchorEntry
-          region: "center"
-          anchors.centerIn: parent
+          entries: root.layoutEntries("centerBegin")
+          region: "centerBegin"
+          anchors.right: centerBox.left
+          anchors.verticalCenter: centerBox.verticalCenter
         }
 
         ModuleList {
-          visible: centerRoot.hasAnchor
-          entries: root.entriesAfter(centerRoot.entries, root.centerAnchor)
-          region: "center"
-          anchors.left: centerAnchorModule.right
-          anchors.verticalCenter: centerAnchorModule.verticalCenter
+          entries: root.layoutEntries("centerEnd")
+          region: "centerEnd"
+          anchors.left: centerBox.right
+          anchors.verticalCenter: centerBox.verticalCenter
         }
       }
     }
@@ -2236,34 +2243,24 @@ function clusterSweepIndex() {
         }
 
         ModuleList {
-          visible: !centerRoot.hasAnchor
-          entries: centerRoot.entries
+          id: centerBox
+          entries: root.layoutEntries("center")
           region: "center"
           anchors.centerIn: parent
         }
 
         ModuleList {
-          visible: centerRoot.hasAnchor
-          entries: root.entriesBefore(centerRoot.entries, root.centerAnchor)
-          region: "center"
-          anchors.bottom: centerAnchorModule.top
-          anchors.horizontalCenter: centerAnchorModule.horizontalCenter
-        }
-
-        ModuleSlot {
-          id: centerAnchorModule
-          visible: centerRoot.hasAnchor
-          entry: centerRoot.anchorEntry
-          region: "center"
-          anchors.centerIn: parent
+          entries: root.layoutEntries("centerBegin")
+          region: "centerBegin"
+          anchors.bottom: centerBox.top
+          anchors.horizontalCenter: centerBox.horizontalCenter
         }
 
         ModuleList {
-          visible: centerRoot.hasAnchor
-          entries: root.entriesAfter(centerRoot.entries, root.centerAnchor)
-          region: "center"
-          anchors.top: centerAnchorModule.bottom
-          anchors.horizontalCenter: centerAnchorModule.horizontalCenter
+          entries: root.layoutEntries("centerEnd")
+          region: "centerEnd"
+          anchors.top: centerBox.bottom
+          anchors.horizontalCenter: centerBox.horizontalCenter
         }
       }
     }
@@ -2493,7 +2490,7 @@ function clusterSweepIndex() {
       visible: slot.dragSource
       anchors.fill: parent
       anchors.margins: Style.space(1)
-      color: root.transparent ? "transparent" : root.background
+      color: root.barSurfaceColor
       borderSpec: Border.flat(root.barForeground, 1)
       radius: Math.min(Style.cornerRadius, height / 2)
       opacity: root.transparent ? 0.22 : 0.32

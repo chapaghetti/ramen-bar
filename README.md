@@ -182,7 +182,7 @@ Install **submenu**. See `AGENTS.md` §6.
 
 The bar config lives under the `bar:` key of [`~/.config/omarchy/shell.json`](../../README.md#shelljson-shape). Out of the box the shell uses [`config/omarchy/shell.json`](../../../config/omarchy/shell.json). Once you customize anything via the bar gestures, `omarchy bar ...`, or by editing shell.json directly, your file is canonical — there is no deep-merge.
 
-The bar is configured directly on the bar itself: drag empty bar space (or click-and-hold) to move the bar to another screen edge, double-left-click empty center-bar space to toggle the pill surfaces between the translucent theme pill ("light" look) and stark black ("dark" look) — text/icons stay light in both modes so glyph contrast always holds, and the change sweeps the bar left → right and recedes right → left on the way back; widgets with fixed colors (indicators, battery, the accent-tinted menu glyph) are unaffected), and drag widgets to reorder them. Use `omarchy bar position`, `omarchy bar transparent`, `omarchy bar move`, and `omarchy bar set` from scripts. Enable or disable widgets with `omarchy plugin enable` and `omarchy plugin disable` (widget ids come from `omarchy plugin list`).
+The bar is configured directly on the bar itself: drag empty bar space (or click-and-hold) to move the bar to another screen edge, double-left-click empty center-bar space to toggle the pill surfaces between the translucent theme pill ("light" look) and stark black ("dark" look) — text/icons stay light in both modes so glyph contrast always holds, and the change sweeps the bar left → right and recedes right → left on the way back; widgets with fixed colors (indicators, battery, the accent-tinted menu glyph) are unaffected), and drag widgets to reorder them. Use `omarchy bar position`, `omarchy bar background`, `omarchy bar move`, and `omarchy bar set` from scripts. Enable or disable widgets with `omarchy plugin enable` and `omarchy plugin disable` (widget ids come from `omarchy plugin list`).
 
 Example `shell.json` (bar subtree only shown):
 
@@ -191,18 +191,19 @@ Example `shell.json` (bar subtree only shown):
   "version": 1,
   "bar": {
     "position": "top",
-    "transparent": false,
-    "centerAnchor": "omarchy.clock",
+    "background": "none",
     "layout": {
       "left": [
         { "id": "omarchy.menu" },
         { "id": "omarchy.spacer", "size": 12 },
         { "id": "omarchy.workspaces" }
       ],
+      "centerBegin": [],
       "center": [
         { "id": "omarchy.media" },
         { "id": "omarchy.clock", "format": "HH:mm" }
       ],
+      "centerEnd": [],
       "right": [
         { "id": "omarchy.audio" },
         { "id": "omarchy.power" }
@@ -212,7 +213,9 @@ Example `shell.json` (bar subtree only shown):
 }
 ```
 
-`centerAnchor` pins one center module to the exact horizontal/vertical center and flanks others around it. Set to an empty string to disable anchoring (the center list is centered as a group).
+`background` selects the bar surface: `opaque`, `glassy` (translucent themed surface), or `none` (fully transparent, so the wallpaper shows through). It replaced the old boolean `transparent` key; Ramen still honours `transparent: true` as an alias for `none`.
+
+The center is split into three independent sections — `centerBegin` sits left of the true center, `center` stays centred, and `centerEnd` sits to its right. Put a widget in `centerEnd` to keep it near the middle without centring it (for example workspaces next to centred media). Legacy `centerAnchor` configs still load: Ramen splits the old `center` list around the anchored widget into these three sections in memory.
 
 ## Module catalogue
 
