@@ -2218,6 +2218,7 @@ function clusterSweepIndex() {
           entries: root.layoutEntries("centerBegin")
           region: "centerBegin"
           anchors.right: centerBox.left
+          anchors.rightMargin: Style.space(5)
           anchors.verticalCenter: centerBox.verticalCenter
         }
 
@@ -2225,6 +2226,7 @@ function clusterSweepIndex() {
           entries: root.layoutEntries("centerEnd")
           region: "centerEnd"
           anchors.left: centerBox.right
+          anchors.leftMargin: Style.space(5)
           anchors.verticalCenter: centerBox.verticalCenter
         }
       }
@@ -2253,6 +2255,7 @@ function clusterSweepIndex() {
           entries: root.layoutEntries("centerBegin")
           region: "centerBegin"
           anchors.bottom: centerBox.top
+          anchors.bottomMargin: Style.space(5)
           anchors.horizontalCenter: centerBox.horizontalCenter
         }
 
@@ -2260,6 +2263,7 @@ function clusterSweepIndex() {
           entries: root.layoutEntries("centerEnd")
           region: "centerEnd"
           anchors.top: centerBox.bottom
+          anchors.topMargin: Style.space(5)
           anchors.horizontalCenter: centerBox.horizontalCenter
         }
       }
