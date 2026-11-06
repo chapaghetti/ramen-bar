@@ -107,13 +107,9 @@ Timer {
   property bool glassy: false
   readonly property color glassBackground: Qt.rgba(background.r, background.g, background.b, Math.min(background.a, 0.35))
   readonly property color barSurfaceColor: transparent ? "transparent" : (glassy ? glassBackground : background)
-  // Double-left-clicking empty bar space toggles the pill surfaces between
-  // the theme pill (soft, translucent — "light" look) and stark black ("dark"
-  // look). Text/icons stay light in both modes so the glyph/pill contrast
-  // always holds; the change sweeps across the bar in a wave. Widgets that
-  // hardcode colors (indicators, battery, the accent-tinted menu glyph) are
-  // unaffected, as is pill chrome.
-  property bool invertedForeground: false
+  // Empty-bar gestures move the bar to another edge. There is deliberately no
+  // click or double-click appearance toggle: pills always use the theme pill
+  // surface below.
   property bool centerSectionHovered: false
   // One bar surface exists per monitor and each reports into this count, so a
   // pointer crossing from one monitor's bar to another's stays counted however
@@ -135,44 +131,25 @@ Timer {
   property color themeForeground: Commons.Color.bar.text
   property color themeContrastForeground: Commons.Color.background
   property color transparentForeground: Commons.Color.bar.text
-  // The glyph color the bar would use if the toggle were off.
-  readonly property color baseGlyphColor: root.useTransparentForeground ? root.transparentForeground : root.themeForeground
-  // Text/icons stay on the light side in both bar modes; the double-click
-  // toggle only shifts the pill surface (theme pill <-> stark black).
-  readonly property color flippedForeground: "#ffffff"
-  property color foreground: root.sweptColorFor(root.clusterSweepIndex(), root.invertedForeground)
-  property color barForeground: root.sweptBarColorFor(root.clusterSweepIndex(), root.invertedForeground)
+  // Bar chrome (drag ghosts, edge previews) is painted over the wallpaper, so
+  // it keeps the wallpaper-aware foreground. Widget glyphs sit on a pill and
+  // use pillForeground below instead.
+  property color foreground: root.themeForeground
+  property color barForeground: root.useTransparentForeground ? root.transparentForeground : root.themeForeground
   property bool foregroundAnimationEnabled: true
   property color background: Commons.Color.bar.background
   property color urgent: Commons.Color.bar.active
-  property int foregroundFlipEpoch: 0
-  property var flipOrder: []
-  property bool flipOriginInverted: false
-  property real flipSweepClock: 0
-  property int flipStepMs: 65
-  property int flipPillMs: 200
-  property int flipDirection: 1
   property var barRegions: ["left", "centerBegin", "center", "centerEnd", "right"]
-  // Alongside the glyph flip, the pills toggle between the theme pill (soft,
-  // translucent — the "light" look) and a stark black surface ("dark" look).
-  // Text stays on the light side in both modes so the contrast always holds.
-  readonly property color starkPillColor: "#000000"
+  // The one pill surface, and the glyph color that reads against it. There is
+  // no alternate surface mode; text is chosen from the pill itself (see
+  // readableForegroundFor), never from the wallpaper.
   readonly property color pillThemeColor: Commons.Color.popups.background
+  readonly property color pillForeground: root.readableForegroundFor(root.pillThemeColor)
 
-  Behavior on barForeground { enabled: root.foregroundAnimationEnabled && root.foregroundFlipEpoch === 0; ColorAnimation { duration: 420; easing.type: Easing.InOutCubic } }
+  Behavior on barForeground { enabled: root.foregroundAnimationEnabled; ColorAnimation { duration: 420; easing.type: Easing.InOutCubic } }
   Behavior on background { ColorAnimation { duration: 420; easing.type: Easing.InOutCubic } }
   Behavior on urgent { ColorAnimation { duration: 420; easing.type: Easing.InOutCubic } }
 
-  NumberAnimation {
-    id: flipSweepAnimator
-    target: root
-    property: "flipSweepClock"
-    from: 0
-    to: 1
-    duration: 500
-    easing.type: Easing.InOutCubic
-    onStopped: root.foregroundFlipEpoch = 0
-  }
   property var tooltipTarget: null
   property var pendingTooltipTarget: null
   property string tooltipText: ""
@@ -905,7 +882,6 @@ Timer {
     var look = config.background || (config.transparent === true ? "none" : "opaque")
     setRequestedTransparency(look === "none")
     if (look !== "none") glassy = look === "glassy"
-    root.invertedForeground = config.foregroundInverted === true
     centerAnchor = Util.canonicalWidgetId(config.centerAnchor || "")
 
     // layoutEntries feeds plain JS arrays to the module Repeaters, and QML
@@ -1366,149 +1342,45 @@ Timer {
     Util.execDetached(command)
   }
 
-  // Rec.709 luma of a QML color, 0 (black) to 1 (white).
-  function colorLuma(color) {
-    return 0.2126 * color.r + 0.7152 * color.g + 0.0722 * color.b
+  // Relative luminance from WCAG 2.1, used to pick a readable glyph color for
+  // a pill. QML colors expose gamma-encoded channels, so linearize first.
+  function srgbToLinear(value) {
+    return value <= 0.03928 ? value / 12.92 : Math.pow((value + 0.055) / 1.055, 2.4)
   }
 
-  function toggleForegroundInversion() {
-    var nextInverted = !(root.invertedForeground === true)
-    root.flipOrder = root.capturePluginBarOrder()
-    root.flipOriginInverted = root.invertedForeground === true
-    root.flipDirection = nextInverted ? 1 : -1
-    flipSweepAnimator.stop()
-    root.foregroundFlipEpoch++
-    root.flipSweepClock = 0
-    root.invertedForeground = nextInverted
-    if (root.shell && typeof root.shell.mutateShellConfig === "function") {
-      root.shell.mutateShellConfig(function(config) {
-        if (!Util.isPlainObject(config.bar)) config.bar = {}
-        config.bar.foregroundInverted = nextInverted
-      })
-    }
-    if (root.foregroundAnimationEnabled) {
-      flipSweepAnimator.duration = Math.max(root.flipSweepTotalMs(), 100)
-      flipSweepAnimator.start()
-    } else {
-      root.flipSweepClock = 1
-    }
+  function relativeLuminance(value) {
+    // QML hands string literals to JS as strings, not color objects.
+    var color = typeof value === "string" ? Qt.color(value) : value
+    return 0.2126 * root.srgbToLinear(color.r)
+      + 0.7152 * root.srgbToLinear(color.g)
+      + 0.0722 * root.srgbToLinear(color.b)
   }
 
-// Left → right foreground flip. Each pill tracks the same sweep clock with a
-// per-pill start offset derived from its position in the rendered layout, so
-// a double-click walks the inversion across the bar as a wave instead of
-// letting every widget animate at its own rate. Toward-inverted sweeps
-// left → right; the return to the base polarity recedes right → left.
-// flipOrder mirrors the ModuleSlot pluginApiId scheme ("omarchy.<id>" for
-// registered/bundled, "bar-entry:<id>" for custom command/qml modules).
-  function capturePluginBarOrder() {
-    var order = []
-    for (var r = 0; r < barRegions.length; r++) {
-      var entries = root.layoutEntries(barRegions[r])
-      for (var i = 0; i < entries.length; i++) {
-        var entry = entries[i]
-        var id = root.entryId(entry)
-        if (!id) continue
-        var cid = root.canonicalWidgetId(id)
-        order.push(root.hasSlotComponent(cid, entry) ? cid : "bar-entry:" + id)
-      }
-    }
-    return order
+  function contrastRatio(a, b) {
+    var la = root.relativeLuminance(a)
+    var lb = root.relativeLuminance(b)
+    var lighter = Math.max(la, lb)
+    var darker = Math.min(la, lb)
+    return (lighter + 0.05) / (darker + 0.05)
   }
 
-  function hasSlotComponent(cid, entry) {
-    if (root.customModuleType(entry) !== "") return false
-    if (root.bundledWidgetComponentFor(cid)) return true
-    var widgets = root.barWidgetRegistry ? root.barWidgetRegistry.widgets : null
-    return !!(widgets && widgets[cid] && widgets[cid].component)
-  }
-
-  function flipSweepTotalMs() {
-    var n = Math.max(root.flipOrder.length, 1)
-    return root.flipStepMs * Math.max(n - 1, 0) + root.flipPillMs
-  }
-
-  function flipProgressFor(index) {
-    if (root.foregroundFlipEpoch === 0) return root.invertedForeground ? 1 : 0
-    var total = root.flipSweepTotalMs()
-    var i = index
-    if (root.flipDirection < 0) i = Math.max(0, root.flipOrder.length - 1 - index)
-    var ms = root.flipSweepClock * total
-    var t = (ms - i * root.flipStepMs) / root.flipPillMs
-    return t < 0 ? 0 : (t > 1 ? 1 : t)
-  }
-
-  function mixRgb(a, b, t) {
-    return Qt.rgba(a.r + (b.r - a.r) * t, a.g + (b.g - a.g) * t, a.b + (b.b - a.b) * t, 1)
-  }
-
-  function glyphColorFor(inverted) {
-    return inverted ? root.flippedForeground : root.themeForeground
-  }
-
-  function glyphBarColorFor(inverted) {
-    return inverted ? root.flippedForeground : root.baseGlyphColor
-  }
-
-  function sweptColorFor(index, inverted) {
-    if (root.foregroundFlipEpoch === 0) return root.glyphColorFor(inverted)
-    return root.mixRgb(
-      root.glyphColorFor(root.flipOriginInverted),
-      root.glyphColorFor(!root.flipOriginInverted),
-      root.flipProgressFor(index))
-  }
-
-  function sweptBarColorFor(index, inverted) {
-    if (root.foregroundFlipEpoch === 0) return root.glyphBarColorFor(inverted)
-    return root.mixRgb(
-      root.glyphBarColorFor(root.flipOriginInverted),
-      root.glyphBarColorFor(!root.flipOriginInverted),
-      root.flipProgressFor(index))
-  }
-
-  function pillColorFor(inverted) {
-    return inverted ? root.starkPillColor : root.pillThemeColor
-  }
-
-  function sweptPillColorFor(index, inverted) {
-    if (root.foregroundFlipEpoch === 0 || index < 0) return root.pillColorFor(inverted)
-    return root.mixRgb(
-      root.pillColorFor(root.flipOriginInverted),
-      root.pillColorFor(!root.flipOriginInverted),
-      root.flipProgressFor(index))
-  }
-
-  function flipOrderIndexOf(pluginId) {
-    return root.flipOrder.indexOf(String(pluginId || ""))
-  }
-
-// Bar chrome (popup headers, drag handles, ...) glides with the wavefront
-// edge: the first registered pill on a toward-dark sweep, the last registered
-// pill on the recede, so it tracks whichever end starts first.
-function clusterSweepIndex() {
-    var order = root.flipOrder
-    if (root.flipDirection < 0) {
-      for (var i = order.length - 1; i >= 0; i--) {
-        if (String(order[i]).indexOf("bar-entry:") !== 0) return i
-      }
-      return Math.max(0, order.length - 1)
-    }
-    for (var j = 0; j < order.length; j++) {
-      if (String(order[j]).indexOf("bar-entry:") !== 0) return j
-    }
-    return Math.max(0, order.length - 1)
+  // White is the default glyph color, but a light pill surface (white, cream,
+  // pale pastel) gets black instead. Picking whichever has the higher contrast
+  // keeps each theme readable without hand-tuning per theme.
+  function readableForegroundFor(background) {
+    return root.contrastRatio("#ffffff", background) >= root.contrastRatio("#000000", background)
+      ? "#ffffff"
+      : "#000000"
   }
 
   function apiForegroundFor(pluginId) {
-    var index = root.flipOrderIndexOf(pluginId)
-    if (index < 0) return root.glyphColorFor(root.invertedForeground)
-    return root.sweptColorFor(index, root.invertedForeground)
+    return root.pillForeground
   }
 
   function apiBarForegroundFor(pluginId) {
-    var index = root.flipOrderIndexOf(pluginId)
-    if (index < 0) return root.glyphBarColorFor(root.invertedForeground)
-    return root.sweptBarColorFor(index, root.invertedForeground)
+    // Kept as a separate API name for compatibility with stock widgets, but
+    // both describe the text on the pill the widget sits in.
+    return root.pillForeground
   }
 
   function rawEntryIndex(entries, name) {
@@ -2339,17 +2211,6 @@ function clusterSweepIndex() {
         mouse.accepted = true
       }
     }
-
-    onDoubleClicked: function(mouse) {
-      if (suppressClick) {
-        suppressClick = false
-        return
-      }
-      if (mouse.button === Qt.LeftButton) {
-        root.toggleForegroundInversion()
-        mouse.accepted = true
-      }
-    }
   }
 
   component ModuleList: Loader {
@@ -2458,7 +2319,7 @@ function clusterSweepIndex() {
     readonly property int pillGap: Style.space(5)
     readonly property int pillPadX: root.vertical ? 0 : Style.space(3)
     readonly property int pillPadY: root.vertical ? Style.space(3) : 0
-    readonly property color pillColor: root.sweptPillColorFor(root.flipOrderIndexOf(pluginApiId), root.invertedForeground)
+    readonly property color pillColor: root.pillThemeColor
     readonly property color pillBorder: Commons.Color.popups.border
     readonly property int pillRadius: Math.min(Style.space(8), Math.min(implicitWidth, implicitHeight) / 2)
     width: implicitWidth

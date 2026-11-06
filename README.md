@@ -1,6 +1,6 @@
 # Ramen Bar
 
-Plugin tested and confirmed working on Omarchy 4.0.3-1 
+Plugin tested and confirmed working on Omarchy 4.5.0-2
 
 A clean, pillbox-style status bar for Omarchy, forked from the stock
 `omarchy.bar` layout engine.<br>
@@ -24,13 +24,12 @@ right of the auto-injected CPU/disk/mem readouts that never existed in your
 config. The first drag of an injected pill pins the whole arrangement to the
 config file; from then on it moves like any other widget.
 
-**A light/dark "print" toggle.** Double-left-click empty bar space to flip the
-pill surfaces between the translucent theme pill ("light" look) and a stark
-black surface ("dark" look). Text and icons stay on the light side in both
-modes, so glyph contrast never breaks no matter which wallpaper you're on. The
-change rolls across the bar as a coordinated wave — left → right away, right →
-left on the way back — because every pill runs its own wave offset from its
-position in the row.
+**Readable pill text, whatever the theme.** Pills use the theme's popup surface,
+and each one picks black or white glyphs from that surface's luminance (WCAG
+contrast), so text stays readable on light and dark themes alike. Glyph color
+follows the pill the text sits on, not the wallpaper, so a bright wallpaper can
+no longer wash the labels out. Widgets with fixed accent colors — indicators,
+battery, the menu glyph — keep them.
 
 **Edge docking with a preview.** Press-and-hold on empty bar space and glide
 toward an edge: the strongest candidate (a diagonal screen split decides)
@@ -182,7 +181,7 @@ Install **submenu**. See `AGENTS.md` §6.
 
 The bar config lives under the `bar:` key of [`~/.config/omarchy/shell.json`](../../README.md#shelljson-shape). Out of the box the shell uses [`config/omarchy/shell.json`](../../../config/omarchy/shell.json). Once you customize anything via the bar gestures, `omarchy bar ...`, or by editing shell.json directly, your file is canonical — there is no deep-merge.
 
-The bar is configured directly on the bar itself: drag empty bar space (or click-and-hold) to move the bar to another screen edge, double-left-click empty center-bar space to toggle the pill surfaces between the translucent theme pill ("light" look) and stark black ("dark" look) — text/icons stay light in both modes so glyph contrast always holds, and the change sweeps the bar left → right and recedes right → left on the way back; widgets with fixed colors (indicators, battery, the accent-tinted menu glyph) are unaffected), and drag widgets to reorder them. Use `omarchy bar position`, `omarchy bar background`, `omarchy bar move`, and `omarchy bar set` from scripts. Enable or disable widgets with `omarchy plugin enable` and `omarchy plugin disable` (widget ids come from `omarchy plugin list`).
+The bar is configured directly on the bar itself: drag empty bar space (or click-and-hold) to move the bar to another screen edge, and drag widgets to reorder them. Empty-space clicks and double-clicks do nothing. Pills always use the theme's popup surface, with glyphs chosen per pill — black or white, whichever has the higher WCAG contrast against that surface — so labels stay readable on light and dark themes. Widgets with fixed colors (indicators, battery, the accent-tinted menu glyph) are unaffected. Use `omarchy bar position`, `omarchy bar background`, `omarchy bar move`, and `omarchy bar set` from scripts. Enable or disable widgets with `omarchy plugin enable` and `omarchy plugin disable` (widget ids come from `omarchy plugin list`).
 
 Example `shell.json` (bar subtree only shown):
 
@@ -324,7 +323,8 @@ Item {
 
 Widgets receive `bar` (the shell root), `moduleName` (string), and `settings` (object) injected at load time. The bar exposes:
 
-- `bar.foreground`, `bar.background`, `bar.urgent` — theme colors (live-updated)
+- `bar.foreground`, `bar.barForeground` — pill-surface text color (white on dark pills, black on light ones; live-updated)
+- `bar.background`, `bar.urgent` — theme colors (live-updated)
 - `bar.fontFamily` — current monospace family
 - `bar.position` — `"top" | "bottom" | "left" | "right"`
 - `bar.vertical` — boolean shortcut
