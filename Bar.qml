@@ -48,10 +48,6 @@ Item {
   // ~/.config/omarchy/plugins/ramen.bar/, so command entries are baked into
   // the layout here rather than requiring each user to write shell.json.
   property string sysStatsScriptDir: home + "/.config/omarchy/plugins/ramen.bar/scripts"
-  // The package-install button uses a contrib QML module bundled in the same
-  // plugin directory, so it is baked into the layout at render time instead of
-  // requiring each user to copy the module file or hand-edit shell.json.
-  property string barModuleDir: home + "/.config/omarchy/plugins/ramen.bar/contrib/bar-modules"
   // Ramen Bar bundles its own variants of the workspaces / tray / indicators /
   // power widgets so its look is fully self-contained: whatever widget ids a
   // layout references, these render instead of the built-in ones. Each entry is
@@ -783,7 +779,7 @@ Timer {
       center = [center[index]]
     }
     return {
-      left:        pinTrayToInner(ensurePkgInstaller(ensureSystemStats(normalized.left, normalized), normalized), "left"),
+      left:        pinTrayToInner(ensureSystemStats(normalized.left, normalized), "left"),
       centerBegin: centerBegin,
       center:      pinTrayToInner(center, "center"),
       centerEnd:   centerEnd,
@@ -830,39 +826,6 @@ Timer {
       })
     }
     return rows
-  }
-
-  // The package-install button ships its own module and TUI script, so inject
-  // it into the left region when the layout has no pkg-install entry anywhere.
-  // An existing entry beats this (id, source, installers config wire through,
-  // users keep their placement); the injected rich settings point the module
-  // at the exact commands to launch.
-  function ensurePkgInstaller(entries, layout) {
-    var rows = Array.isArray(entries) ? entries.slice() : []
-    if (layoutHasId(layout, "pkg-install")) return rows
-    rows.push({
-      id: "pkg-install",
-      type: "qml",
-      source: barModuleDir + "/pkg-install.qml",
-      installers: {
-        package: "omarchy-pkg-install",
-        aur: "omarchy-pkg-aur-install",
-        flatpak: sysStatsScriptDir + "/omarchy-pkg-flatpak-install"
-      }
-    })
-    return rows
-  }
-
-  function layoutHasId(layout, id) {
-    var regions = ["left", "centerBegin", "center", "centerEnd", "right"]
-    for (var r = 0; r < regions.length; r++) {
-      var values = layout && layout[regions[r]]
-      if (!Array.isArray(values)) continue
-      for (var i = 0; i < values.length; i++) {
-        if (BarModel.entryId(values[i]) === id) return true
-      }
-    }
-    return false
   }
 
   // The tray drawer reveals inward (away from the bar edge). Place it at the

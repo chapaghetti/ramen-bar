@@ -48,11 +48,6 @@ in the left section on a 5-second cadence and open `disktree`/`btop` when clicke
 When the bar is pinned to a screen edge, they reflow into a stacked,
 center-aligned icon-above-percentage column instead of a squeezed single line.
 
-**Package install, on tap.** An injected button opens Arch-repo, AUR, and
-Flatpak install TUIs straight from the bar — every row gated on what's
-actually installed, so the Flatpak option quietly disappears where flatpak
-isn't.
-
 Install with:
 
 ```bash
@@ -84,9 +79,9 @@ moves you make on the bar are left alone and persist. If your layout is
 customized in any way — a command widget, or a left section that doesn't
 start with `omarchy.menu` — the bar respects it and changes nothing.
 
-The auto-injected install button (and the cpu/mem/disk readouts) can be
-dragged to a new spot like any other widget; the first drag records that
-placement in `shell.json`, after which it moves exactly like the rest.
+The auto-injected cpu/mem/disk readouts can be dragged to a new spot like any
+other widget; the first drag records that placement in `shell.json`, after
+which it moves exactly like the rest.
 
 ### Bundled widgets
 
@@ -154,28 +149,27 @@ bottom bars keep the flat `<glyph> <NN>%` label.
 
 To drop the widgets, delete the `ensureSystemStats` injection in `Bar.qml`.
 
-## Package install menu (Flatpak / AUR / repo)
+## Package install menu (not injected)
+
+The bar no longer injects a package-install button. The bundled module and TUI
+script are still shipped, so the popup can be restored by reinstating the
+`ensurePkgInstaller` injection in `Bar.qml` from git history. It opens three
+install TUIs:
 
 <img width="277" height="152" alt="image" src="https://github.com/user-attachments/assets/ae0d3ac5-eac3-447a-bea9-c019c85e5538" />
-
-Built into the plugin — no setup. Installing the bar adds a package-button
-that opens a popup with three install TUIs:
 
 - **Package (Arch repo)** → the stock `omarchy-pkg-install`
 - **AUR** → the stock `omarchy-pkg-aur-install`
 - **Flatpak** → the bundled `scripts/omarchy-pkg-flatpak-install` TUI
   (`FLATPAK_INSTALL_REMOTE` overrides the default `flathub` remote)
 
-The bar injects the button into `bar.layout.left` at render time when your
-layout has no `pkg-install` entry (place your own anywhere to take over), and
-it ships the module and script inside the plugin so no files need copying or
-`PATH` tweaks. Rows are gated on what's actually installed (`command -v`), so
-the Flatpak option disappears on machines without flatpak and everything
-still works.
+The module lives in `contrib/bar-modules/pkg-install.qml`, and rows are gated
+on what's actually installed (`command -v`), so the Flatpak option disappears
+on machines without flatpak.
 
 Optional extra: `contrib/menu-extensions/omarchy-menu.jsonc` → copy to
 `~/.config/omarchy/extensions/omarchy-menu.jsonc` to also add *Flatpak* to the
-Install **submenu**. See `AGENTS.md` §6.
+Install **submenu**.
 
 ## Customizing
 
